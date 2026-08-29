@@ -1,0 +1,45 @@
+name: Import archive
+
+on:
+  push:
+    paths:
+      - '.upload/complete'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/import
+          cat .upload/chunk-*.b64 | base64 -d > /tmp/import/project.zip
+          mkdir -p /tmp/import/extracted
+          unzip -q /tmp/import/project.zip -d /tmp/import/extracted
+          root=$(find /tmp/import/extracted -mindepth 1 -maxdepth 1 -type d -print -quit)
+          test -n "$root"
+          rm -rf ./* ./.??* 2>/dev/null || true
+          cp -a "$root"/. .
+          rm -rf .upload .github/workflows/import-archive.yml
+
+      - name: Create clean initial commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "哥哥科技"
+          git config user.email "175325443+ucxn@users.noreply.github.com"
+          git add -A
+          git checkout --orphan clean-main
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -A
+          git commit -m "首次上传"
+          git push --force origin HEAD:main
