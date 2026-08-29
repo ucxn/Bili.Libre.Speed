@@ -24,8 +24,11 @@ jobs:
           mapfile -t TOP < <(find .imported -mindepth 1 -maxdepth 1 -printf '%f\n')
           if [ "${#TOP[@]}" -eq 1 ] && [ -d ".imported/${TOP[0]}" ]; then SRC=".imported/${TOP[0]}"; else SRC=".imported"; fi
           find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.imported' ! -name 'BiliVideo-Lab-trmp.zip' -exec rm -rf {} +
-          cp -a "$SRC"/. .
-          rm -rf .imported BiliVideo-Lab-trmp.zip .github/workflows/import-zip.yml .github/workflows/import2.yml
+          mkdir -p .copyroot
+          cp -a "$SRC"/. .copyroot/
+          rm -rf .copyroot/.github/workflows
+          cp -a .copyroot/. .
+          rm -rf .copyroot .imported BiliVideo-Lab-trmp.zip .github/workflows/import-zip.yml .github/workflows/import2.yml
       - name: Commit and push
         shell: bash
         run: |
