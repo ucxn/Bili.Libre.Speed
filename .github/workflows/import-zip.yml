@@ -1,0 +1,56 @@
+name: Import project ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_path:
+        description: 'ZIP path in the repository'
+        required: true
+        default: '.upload/project.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract project to repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="${{ inputs.zip_path }}"
+          test -f "$ZIP"
+          rm -rf .imported
+          mkdir -p .imported
+          unzip -q "$ZIP" -d .imported
+
+          # Find the archive's single top-level directory when present.
+          mapfile -t TOP < <(find .imported -mindepth 1 -maxdepth 1 -printf '%f\n')
+          if [ "${#TOP[@]}" -eq 1 ] && [ -d ".imported/${TOP[0]}" ]; then
+            SRC=".imported/${TOP[0]}"
+          else
+            SRC=".imported"
+          fi
+
+          # Remove everything currently tracked/untracked except the ZIP,
+          # then copy the actual project contents to the repository root.
+          rm -rf .git/*
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.upload' -exec rm -rf {} +
+          cp -a "$SRC"/. .
+          rm -rf .imported .upload
+
+      - name: Commit as 首次上传
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "首次上传" || echo "No changes to commit"
+          git push --force origin HEAD:main
