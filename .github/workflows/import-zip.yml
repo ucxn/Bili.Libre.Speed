@@ -3,7 +3,7 @@ name: Import project ZIP
 on:
   push:
     paths:
-      - '.upload/project.zip'
+      - 'BiliVideo-Lab-trmp.zip'
 
 permissions:
   contents: write
@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP='.upload/project.zip'
+          ZIP='BiliVideo-Lab-trmp.zip'
           test -f "$ZIP"
           rm -rf .imported
           mkdir -p .imported
@@ -34,9 +34,9 @@ jobs:
             SRC=".imported"
           fi
 
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.imported' -exec rm -rf {} +
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.imported' ! -name 'BiliVideo-Lab-trmp.zip' -exec rm -rf {} +
           cp -a "$SRC"/. .
-          rm -rf .imported .upload
+          rm -rf .imported BiliVideo-Lab-trmp.zip .github/workflows/import-zip.yml
 
       - name: Commit as 首次上传
         shell: bash
