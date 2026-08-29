@@ -1,0 +1,162 @@
+import 'dart:math';
+
+import 'package:flutter/rendering.dart';
+import 'package:material_ui/material_ui.dart';
+
+class DisabledIcon extends SingleChildRenderObjectWidget {
+  const DisabledIcon({
+    super.key,
+    required Widget super.child,
+    this.disable = false,
+    this.color,
+    this.iconSize,
+    this.lineLengthScale = 0.9,
+    this.strokeCap = .butt,
+  });
+
+  final bool disable;
+  final Color? color;
+  final double? iconSize;
+  final StrokeCap strokeCap;
+  final double lineLengthScale;
+
+  Icon? get _icon => child is Icon ? child as Icon : null;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    late final iconTheme = IconTheme.of(context);
+    final icon = _icon;
+    return RenderMaskedIcon(
+      disable: disable,
+      iconSize: iconSize ?? icon?.size ?? iconTheme.size ?? 24.0,
+      color: color ?? icon?.color ?? iconTheme.color!,
+      strokeCap: strokeCap,
+      lineLengthScale: lineLengthScale,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, RenderMaskedIcon renderObject) {
+    late final iconTheme = IconTheme.of(context);
+    final icon = _icon;
+    renderObject
+      ..disable = disable
+      ..iconSize = iconSize ?? icon?.size ?? iconTheme.size ?? 24.0
+      ..color = color ?? icon?.color ?? iconTheme.color!
+      ..strokeCap = strokeCap
+      ..lineLengthScale = lineLengthScale;
+  }
+}
+
+class RenderMaskedIcon extends RenderProxyBox {
+  RenderMaskedIcon({
+    required this._disable,
+    required this._iconSize,
+    required this._color,
+    required this._strokeCap,
+    required this._lineLengthScale,
+  });
+
+  bool _disable;
+  bool get disable => _disable;
+  set disable(bool value) {
+    if (_disable == value) return;
+    _disable = value;
+    markNeedsPaint();
+  }
+
+  double _iconSize;
+  double get iconSize => _iconSize;
+  set iconSize(double value) {
+    if (_iconSize == value) return;
+    _iconSize = value;
+    markNeedsPaint();
+  }
+
+  Color _color;
+  Color get color => _color;
+  set color(Color value) {
+    if (_color == value) return;
+    _color = value;
+    markNeedsPaint();
+  }
+
+  StrokeCap _strokeCap;
+  StrokeCap get strokeCap => _strokeCap;
+  set strokeCap(StrokeCap value) {
+    if (_strokeCap == value) return;
+    _strokeCap = value;
+    markNeedsPaint();
+  }
+
+  double _lineLengthScale;
+  double get lineLengthScale => _lineLengthScale;
+  set lineLengthScale(double value) {
+    if (_lineLengthScale == value) return;
+    _lineLengthScale = value;
+    markNeedsPaint();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (!disable) {
+      return super.paint(context, offset);
+    }
+
+    final canvas = context.canvas;
+
+    var rectOffset = offset;
+    Size size = this.size;
+    final exceedWidth = size.width > _iconSize;
+    final exceedHeight = size.height > _iconSize;
+    if (exceedWidth || exceedHeight) {
+      final dx = exceedWidth ? (size.width - _iconSize) / 2.0 : 0.0;
+      final dy = exceedHeight ? (size.height - _iconSize) / 2.0 : 0.0;
+      size = Size.square(_iconSize);
+      rectOffset += Offset(dx, dy);
+    } else if (size.width < _iconSize && size.height < _iconSize) {
+      size = Size.square(_iconSize);
+    }
+
+    final strokeWidth = size.width / 12;
+
+    var rect = rectOffset & size;
+
+    final sqrt2Width = strokeWidth * sqrt2; // rotate pi / 4
+
+    final path = Path.combine(
+      PathOperation.union,
+      Path() // bottom
+        ..moveTo(rect.left, rect.bottom)
+        ..lineTo(rect.left, rect.top + sqrt2Width)
+        ..lineTo(rect.right - sqrt2Width, rect.bottom)
+        ..close(),
+      Path() // top
+        ..moveTo(rect.right, rect.top)
+        ..lineTo(rect.right, rect.bottom - sqrt2Width)
+        ..lineTo(rect.left + sqrt2Width, rect.top),
+    );
+
+    canvas
+      ..save()
+      ..clipPath(path, doAntiAlias: false);
+    super.paint(context, offset);
+
+    canvas.restore();
+
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = strokeCap;
+
+    final strokeOffset = strokeWidth * sqrt1_2 / 2;
+    rect = rect
+        .translate(-strokeOffset, strokeOffset)
+        .deflate(size.width * lineLengthScale);
+    canvas.drawLine(
+      rect.topLeft,
+      rect.bottomRight,
+      linePaint,
+    );
+  }
+}

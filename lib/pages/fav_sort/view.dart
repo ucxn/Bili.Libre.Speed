@@ -1,0 +1,130 @@
+import 'package:PiliPlus/common/widgets/reorder_mixin.dart';
+import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/http/fav.dart';
+import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models_new/fav/fav_detail/media.dart';
+import 'package:PiliPlus/pages/fav_detail/controller.dart';
+import 'package:PiliPlus/pages/fav_detail/widget/fav_video_card.dart';
+import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:get/get.dart';
+
+class FavSortPage extends StatefulWidget {
+  const FavSortPage({super.key, required this.favDetailController});
+
+  final FavDetailController favDetailController;
+
+  @override
+  State<FavSortPage> createState() => _FavSortPageState();
+}
+
+class _FavSortPageState extends State<FavSortPage> with ReorderMixin {
+  FavDetailController get _favDetailController => widget.favDetailController;
+
+  late List<FavDetailItemModel> sortList = List<FavDetailItemModel>.from(
+    _favDetailController.loadingState.value.data!,
+  );
+  List<String> sort = <String>[];
+
+  void onLoadMore() {
+    if (_favDetailController.isEnd) {
+      return;
+    }
+    _favDetailController.onLoadMore().whenComplete(() {
+      try {
+        if (_favDetailController.loadingState.value case Success(
+          :final response,
+        )) {
+          sortList.addAll(response!.skip(sortList.length));
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleScaffold(
+      appBar: AppBar(
+        title: Text('排序: ${_favDetailController.folderInfo.value.title}'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (sort.isEmpty) {
+                Get.back();
+                return;
+              }
+              FavHttp.sortFav(
+                mediaId: _favDetailController.mediaId,
+                sort: sort.join(','),
+              ).then((res) {
+                if (res.isSuccess) {
+                  SmartDialog.showToast('排序完成');
+                  _favDetailController.loadingState.value = Success(sortList);
+                  if (mounted) {
+                    Get.back();
+                  }
+                } else {
+                  res.toast();
+                }
+              });
+            },
+            child: const Text('完成'),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: _buildBody,
+    );
+  }
+
+  void onReorderItem(int oldIndex, int newIndex) {
+    final oldItem = sortList[oldIndex];
+    final newItem = sortList.getOrNull(
+      oldIndex > newIndex ? newIndex - 1 : newIndex, // might be Negative
+    );
+    sort.add(
+      '${newItem == null ? '0:0' : '${newItem.id}:${newItem.type}'}:${oldItem.id}:${oldItem.type}',
+    );
+
+    sortList.insert(newIndex, sortList.removeAt(oldIndex));
+
+    setState(() {});
+  }
+
+  Widget get _buildBody {
+    final child = ReorderableListView.builder(
+      onReorderItem: onReorderItem,
+      proxyDecorator: proxyDecorator,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding:
+          MediaQuery.viewPaddingOf(context).copyWith(top: 0) +
+          const EdgeInsets.only(bottom: 100),
+      itemCount: sortList.length,
+      itemBuilder: (context, index) {
+        final item = sortList[index];
+        return SizedBox(
+          key: ValueKey(item.id),
+          height: 110,
+          child: FavVideoCardH(item: item),
+        );
+      },
+    );
+    if (!_favDetailController.isEnd) {
+      return NotificationListener<ScrollEndNotification>(
+        onNotification: (notification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels >= metrics.maxScrollExtent - 300) {
+            onLoadMore();
+          }
+          return false;
+        },
+        child: child,
+      );
+    }
+    return child;
+  }
+}

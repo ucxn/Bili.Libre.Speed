@@ -1,0 +1,983 @@
+import 'dart:math' as math;
+
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/widgets/dialog/simple_dialog_option.dart';
+import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
+import 'package:PiliPlus/common/widgets/image/cached_network_svg_image.dart';
+import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart';
+import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
+import 'package:PiliPlus/http/constants.dart';
+import 'package:PiliPlus/models/common/image_preview_type.dart';
+import 'package:PiliPlus/models/common/image_type.dart';
+import 'package:PiliPlus/models/dynamics/article_content_model.dart'
+    show ArticleContentModel, Rich, Style, Word, Node;
+import 'package:PiliPlus/models/dynamics/result.dart';
+import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
+import 'package:PiliPlus/utils/app_scheme.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/theme_ext.dart';
+import 'package:PiliPlus/utils/image_utils.dart';
+import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
+import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_navigation/src/extension_navigation.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:re_highlight/languages/all.dart';
+import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/github-dark.dart';
+import 'package:re_highlight/styles/github.dart';
+
+class OpusContent extends StatelessWidget {
+  final List<ArticleContentModel> opus;
+  final ValueGetter<List<SourceModel>> images;
+  final double maxWidth;
+  final String opusId;
+
+  const OpusContent({
+    super.key,
+    required this.opus,
+    required this.images,
+    required this.maxWidth,
+    required this.opusId,
+  });
+
+  static InlineSpan _node2Widget({
+    required Node item,
+    bool isQuote = false,
+    required String opusId,
+    required ColorScheme colorScheme,
+    required ValueGetter<double> surfaceLuminance,
+  }) {
+    switch (item.type) {
+      case 'TEXT_NODE_TYPE_RICH' when (item.rich != null):
+        final rich = item.rich!;
+        switch (rich.type) {
+          case 'RICH_TEXT_NODE_TYPE_EMOJI':
+            Emoji emoji = rich.emoji!;
+            final size = 20.0 * emoji.size;
+            return WidgetSpan(
+              rawText: rich.origText,
+              child: NetworkImgLayer(
+                width: size,
+                height: size,
+                src: emoji.url,
+                type: ImageType.emote,
+              ),
+            );
+          case 'RICH_TEXT_NODE_TYPE_LOTTERY':
+            return TextSpan(
+              children: [
+                WidgetSpan(
+                  alignment: .middle,
+                  child: Icon(
+                    Icons.redeem_rounded,
+                    size: 16,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                TextSpan(
+                  text: '${rich.origText} ',
+                  style: TextStyle(color: colorScheme.primary),
+                  recognizer: NoDeadlineTapGestureRecognizer()
+                    ..onTap = () => Get.toNamed(
+                      '/webview',
+                      parameters: {
+                        'url':
+                            'https://www.bilibili.com/h5/lottery/result?business_id=$opusId',
+                      },
+                    ),
+                ),
+              ],
+            );
+          default:
+            return TextSpan(
+              text:
+                  '${rich.type == 'RICH_TEXT_NODE_TYPE_WEB' ? '\u{1F517}' : ''}${item.rich!.text}',
+              style: _getStyle(
+                rich.style,
+                rich.type == 'RICH_TEXT_NODE_TYPE_TEXT'
+                    ? null
+                    : colorScheme.primary,
+              ),
+              recognizer: NoDeadlineTapGestureRecognizer()
+                ..onTap = () {
+                  switch (rich.type) {
+                    case 'RICH_TEXT_NODE_TYPE_AT':
+                      Get.toNamed('/member?mid=${rich.rid}');
+                    // case 'RICH_TEXT_NODE_TYPE_TOPIC':
+                    default:
+                      if (rich.jumpUrl != null) {
+                        PiliScheme.routePushFromUrl(rich.jumpUrl!);
+                      }
+                  }
+                },
+            );
+        }
+      case 'TEXT_NODE_TYPE_FORMULA' when (item.formula != null):
+        final latex = item.formula!.latexContent!;
+        return WidgetSpan(
+          child: CachedNetworkSVGImage(
+            cacheKey: latex,
+            semanticsLabel: latex,
+            '${HttpString.apiBaseUrl}/x/web-frontend/mathjax/tex?formula=${Uri.encodeComponent(latex)}',
+            colorFilter: ColorFilter.mode(
+              colorScheme.onSurfaceVariant,
+              BlendMode.srcIn,
+            ),
+            alignment: .centerLeft,
+            placeholderBuilder: (_) => Text(latex),
+            errorBuilder: (_) => Text(latex),
+          ),
+        );
+      default:
+        return _getSpan(
+          item.word,
+          surfaceLuminance: surfaceLuminance,
+          defaultColor: isQuote ? colorScheme.onSurfaceVariant : null,
+        );
+    }
+  }
+
+  static TextStyle _getStyle(Style? style, [Color? color, double? fontSize]) =>
+      TextStyle(
+        decoration: style?.strikethrough == true
+            ? TextDecoration.lineThrough
+            : null,
+        decorationColor: color,
+        fontStyle: style?.italic == true ? FontStyle.italic : null,
+        fontWeight: style?.bold == true ? FontWeight.bold : null,
+        color: color,
+        fontSize: fontSize,
+      );
+
+  static TextSpan _getSpan(
+    Word? word, {
+    Color? defaultColor,
+    required ValueGetter<double> surfaceLuminance,
+  }) {
+    Color? color;
+    if (word?.color case final c?) {
+      final tmpColor = Color(c);
+      double max = tmpColor.computeLuminance();
+      double min = surfaceLuminance();
+      if (max < min) {
+        final tmp = max;
+        max = min;
+        min = tmp;
+      }
+
+      // WCAG AA : (max + 0.05) / (min + 0.05) > 3.0
+      if (max > 3.0 * min + 0.1) {
+        color = tmpColor;
+      }
+    }
+    return TextSpan(
+      text: word?.words,
+      style: _getStyle(
+        word?.style,
+        color ?? defaultColor,
+        word?.effectiveFontSize,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // if (kDebugMode) debugPrint('opusContent');
+    if (opus.isEmpty) {
+      return const SliverToBoxAdapter();
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    late final isDarkMode = colorScheme.isDark;
+    double? surfaceLuminance;
+    double getSurfaceLuminance() =>
+        surfaceLuminance ??= colorScheme.surface.computeLuminance();
+
+    late final highlight = Highlight()..registerLanguages(builtinAllLanguages);
+
+    return SliverList.separated(
+      itemCount: opus.length,
+      itemBuilder: (context, index) {
+        final element = opus[index];
+        try {
+          switch (element.paraType) {
+            case 1 || 4:
+              final isQuote = element.paraType == 4;
+              Widget widget = Text.rich(
+                textAlign: element.align == 1 ? TextAlign.center : null,
+                TextSpan(
+                  children: element.text?.nodes
+                      ?.map(
+                        (item) => _node2Widget(
+                          item: item,
+                          opusId: opusId,
+                          colorScheme: colorScheme,
+                          surfaceLuminance: getSurfaceLuminance,
+                        ),
+                      )
+                      .toList(),
+                ),
+              );
+              if (isQuote) {
+                widget = Container(
+                  padding: const .only(left: 8, top: 4, right: 4, bottom: 4),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: colorScheme.outlineVariant,
+                        width: 4,
+                      ),
+                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(6)),
+                    color: colorScheme.onInverseSurface,
+                  ),
+                  child: widget,
+                );
+              }
+              return widget;
+            case 2 when (element.pic != null):
+              final pics = element.pic!.pics!;
+              if (pics.length == 1) {
+                final pic = pics.first;
+                double? width = pic.width == null
+                    ? null
+                    : math.min(maxWidth, pic.width!);
+                final height = width == null || pic.height == null
+                    ? null
+                    : width * pic.height! / pic.width!;
+                width ??= maxWidth;
+                Widget child = CachedNetworkImage(
+                  width: width,
+                  height: height,
+                  memCacheWidth: width.cacheSize(context),
+                  imageUrl: ImageUtils.thumbnailUrl(pic.url!, 60),
+                  fadeInDuration: const Duration(milliseconds: 120),
+                  fadeOutDuration: const Duration(milliseconds: 120),
+                  placeholder: (_, _) => Image.asset(Assets.loading),
+                );
+                if (!(pic.isLongPic ?? false)) {
+                  child = fromHero(
+                    tag: '${pic.url!}$hashCode',
+                    child: child,
+                  );
+                }
+                final images = this.images();
+                return GestureDetector(
+                  onTap: () => PageUtils.imageView(
+                    imgList: images,
+                    initialPage: images.indexWhere((e) => e.url == pic.url),
+                    quality: 60,
+                    tag: hashCode.toString(),
+                  ),
+                  child: child,
+                );
+              } else {
+                return ImageGridView(
+                  picArr: pics
+                      .map(
+                        (e) => ImageModel(
+                          width: e.width,
+                          height: e.height,
+                          url: e.url!,
+                        ),
+                      )
+                      .toList(),
+                );
+              }
+            case 3:
+              if (element.line?.pic case final pic?) {
+                final height = pic.height?.toDouble();
+                return CachedNetworkImage(
+                  fit: .contain,
+                  height: height,
+                  width: maxWidth,
+                  memCacheWidth: maxWidth.cacheSize(context),
+                  imageUrl: ImageUtils.thumbnailUrl(pic.url!),
+                  placeholder: (_, _) => const SizedBox.shrink(),
+                );
+              } else {
+                return const Divider();
+              }
+            case 5 when (element.list?.items?.isNotEmpty == true):
+              return Text.rich(
+                TextSpan(
+                  children: element.list!.items!.mapIndexed((i, entry) {
+                    return TextSpan(
+                      children: [
+                        const WidgetSpan(
+                          child: Icon(MdiIcons.circleMedium),
+                          alignment: .middle,
+                        ),
+                        ...entry.nodes!.map((item) {
+                          if (item.word != null) {
+                            return _getSpan(
+                              item.word,
+                              surfaceLuminance: getSurfaceLuminance,
+                            );
+                          }
+                          if (item.rich case Rich(
+                            :final text,
+                            :final jumpUrl,
+                          )) {
+                            final hasUrl =
+                                jumpUrl != null && jumpUrl.isNotEmpty;
+                            return TextSpan(
+                              text: '${hasUrl ? '\u{1F517}' : ''}$text',
+                              recognizer: hasUrl
+                                  ? (NoDeadlineTapGestureRecognizer()
+                                      ..onTap = () =>
+                                          PiliScheme.routePushFromUrl(jumpUrl))
+                                  : null,
+                              style: hasUrl
+                                  ? TextStyle(color: colorScheme.primary)
+                                  : null,
+                            );
+                          }
+                          return const TextSpan();
+                        }),
+                        if (i < element.list!.items!.length - 1)
+                          const TextSpan(text: '\n'),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              );
+            case 6:
+              final type = element.linkCard!.card!.type;
+              Widget child;
+              switch (type) {
+                case 'LINK_CARD_TYPE_UGC':
+                  final ugc = element.linkCard!.card!.ugc!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      NetworkImgLayer(
+                        width: 104,
+                        height: 65,
+                        src: ugc.cover,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(ugc.title!),
+                            Text(
+                              ugc.descSecond!,
+                              maxLines: 2,
+                              overflow: .ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_ITEM_NULL':
+                  final itemNull = element.linkCard?.card?.itemNull;
+                  child = Text(
+                    ' ${itemNull?.text}: ${element.linkCard?.card?.oid}',
+                  );
+                case 'LINK_CARD_TYPE_COMMON':
+                  final common = element.linkCard!.card!.common!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      NetworkImgLayer(
+                        width: 104,
+                        height: 65,
+                        src: common.cover,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(common.title!),
+                            if (common.desc1 != null)
+                              Text(
+                                common.desc1!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                            if (common.desc2 != null)
+                              Text(
+                                common.desc2!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_LIVE':
+                  final live = element.linkCard!.card!.live!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      NetworkImgLayer(
+                        width: 104,
+                        height: 65,
+                        src: live.cover,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(live.title!),
+                            if (live.descFirst != null)
+                              Text(
+                                live.descFirst!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                            if (live.descSecond != null)
+                              Text(
+                                live.descSecond!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_OPUS':
+                  final opus = element.linkCard!.card!.opus!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      NetworkImgLayer(
+                        width: 104,
+                        height: 65,
+                        src: opus.cover,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(opus.title!),
+                            Text(
+                              '${opus.authorName} · ${opus.statView ?? 0}阅读',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_VOTE':
+                  final vote = element.linkCard!.card!.vote!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: const .all(.circular(6)),
+                          color: colorScheme.secondaryContainer,
+                        ),
+                        width: 70,
+                        height: 50,
+                        alignment: .center,
+                        child: Icon(
+                          Icons.bar_chart_rounded,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(vote.desc!),
+                            Text(
+                              '${vote.joinNum}人参与',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_MUSIC':
+                  final music = element.linkCard!.card!.music!;
+                  child = Row(
+                    spacing: 10,
+                    children: [
+                      NetworkImgLayer(
+                        width: 104,
+                        height: 65,
+                        src: music.cover,
+                        borderRadius: const .all(.circular(6)),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .start,
+                          children: [
+                            Text(music.title!),
+                            if (music.label != null)
+                              Text(
+                                music.label!,
+                                maxLines: 2,
+                                overflow: .ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                case 'LINK_CARD_TYPE_GOODS':
+                  final goods = element.linkCard!.card!.goods!;
+                  child = Column(
+                    children: goods.items!.map((e) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (e.jumpUrl?.isNotEmpty == true) {
+                            PiliScheme.routePushFromUrl(e.jumpUrl!);
+                          }
+                        },
+                        child: Row(
+                          spacing: 10,
+                          children: [
+                            NetworkImgLayer(
+                              width: 104,
+                              height: 65,
+                              src: e.cover,
+                              borderRadius: const .all(.circular(6)),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: .start,
+                                children: [
+                                  Text(e.name!),
+                                  if (e.brief?.isNotEmpty == true)
+                                    Text(
+                                      e.brief!,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: colorScheme.outline,
+                                      ),
+                                    ),
+                                  if (e.price?.isNotEmpty == true)
+                                    Text(
+                                      '${e.price!}起',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: colorScheme.outline,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                default:
+                  throw UnimplementedError(
+                    '\nparaType: ${element.paraType},\ncard type: $type',
+                  );
+              }
+              return Material(
+                shape: const RoundedRectangleBorder(
+                  borderRadius: .all(.circular(8)),
+                ),
+                color: colorScheme.onInverseSurface,
+                child: InkWell(
+                  onTap: type == 'LINK_CARD_TYPE_GOODS'
+                      ? null
+                      : () {
+                          try {
+                            final card = element.linkCard!.card!;
+                            if (type == 'LINK_CARD_TYPE_VOTE') {
+                              showVoteDialog(
+                                context,
+                                card.vote?.voteId ?? int.parse(card.oid!),
+                              );
+                              return;
+                            }
+                            if (type == 'LINK_CARD_TYPE_ITEM_NULL') {
+                              showDialog(
+                                context: context,
+                                builder: (context) => SimpleDialog(
+                                  clipBehavior: .hardEdge,
+                                  contentPadding: const .symmetric(
+                                    vertical: 12,
+                                  ),
+                                  children: [
+                                    DialogOption(
+                                      onPressed: () {
+                                        Get.back();
+                                        PiliScheme.videoPush(
+                                          int.parse(card.oid!),
+                                          null,
+                                        );
+                                      },
+                                      child: const Text('视频'),
+                                    ),
+                                    DialogOption(
+                                      onPressed: () {
+                                        Get.back();
+                                        PageUtils.pushDynFromId(id: card.oid!);
+                                      },
+                                      child: const Text('动态/专栏'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+                            final url = switch (type) {
+                              'LINK_CARD_TYPE_UGC' => card.ugc!.jumpUrl,
+                              'LINK_CARD_TYPE_COMMON' => card.common!.jumpUrl,
+                              'LINK_CARD_TYPE_LIVE' => card.live!.jumpUrl,
+                              'LINK_CARD_TYPE_OPUS' => card.opus!.jumpUrl,
+                              'LINK_CARD_TYPE_MUSIC' => card.music!.jumpUrl,
+                              _ => null,
+                            };
+                            if (url != null && url.isNotEmpty) {
+                              PiliScheme.routePushFromUrl(url);
+                            }
+                          } catch (_) {}
+                        },
+                  borderRadius: const .all(.circular(8)),
+                  child: Padding(
+                    padding: const .all(8),
+                    child: child,
+                  ),
+                ),
+              );
+            case 7 when (element.code != null):
+              final renderer = TextSpanRenderer(
+                null,
+                isDarkMode ? githubDarkTheme : githubTheme,
+              );
+              highlight
+                  .highlightAuto(
+                    element.code!.content!,
+                    element.code!.lang == 'language-clike'
+                        ? const ['c', 'java']
+                        : [
+                            element.code!.lang!
+                                .replaceAll('language-', '')
+                                .replaceAll('like', ''),
+                          ],
+                  )
+                  .render(renderer);
+              return Container(
+                padding: const .all(12),
+                decoration: BoxDecoration(
+                  borderRadius: const .all(.circular(8)),
+                  color: colorScheme.onInverseSurface,
+                ),
+                width: .infinity,
+                child: Text.rich(renderer.span!),
+              );
+            case 8 when (element.heading?.nodes?.isNotEmpty == true):
+              return Text.rich(
+                TextSpan(
+                  children: element.heading!.nodes!
+                      .map(
+                        (e) => _node2Widget(
+                          item: e,
+                          opusId: opusId,
+                          colorScheme: colorScheme,
+                          surfaceLuminance: getSurfaceLuminance,
+                        ),
+                      )
+                      .toList(),
+                ),
+              );
+            default:
+              if (kDebugMode) debugPrint('unknown type ${element.paraType}');
+              if (element.text?.nodes?.isNotEmpty == true) {
+                return Text.rich(
+                  textAlign: element.align == 1 ? TextAlign.center : null,
+                  TextSpan(
+                    children: element.text!.nodes!
+                        .map<TextSpan>(
+                          (item) => _getSpan(
+                            item.word,
+                            surfaceLuminance: getSurfaceLuminance,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                );
+              }
+
+              return Text(
+                '不支持的类型 (${element.paraType})',
+                style: const TextStyle(
+                  fontWeight: .bold,
+                  color: Colors.red,
+                ),
+              );
+          }
+        } catch (e, s) {
+          return Text(
+            '错误的类型 $e${kDebugMode ? '\n$s' : ''}',
+            style: const TextStyle(
+              fontWeight: .bold,
+              color: Colors.red,
+            ),
+          );
+        }
+      },
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+    );
+  }
+}
+
+Widget moduleBlockedItem(
+  BuildContext context,
+  ThemeData theme,
+  ModuleBlocked moduleBlocked,
+) {
+  late final isDarkMode = theme.isDark;
+
+  BoxDecoration? bgImg(double width) {
+    return moduleBlocked.bgImg == null
+        ? null
+        : BoxDecoration(
+            image: DecorationImage(
+              fit: .fill,
+              image: ResizeImage(
+                CachedNetworkImageProvider(
+                  ImageUtils.thumbnailUrl(
+                    isDarkMode
+                        ? moduleBlocked.bgImg!.imgDark
+                        : moduleBlocked.bgImg!.imgDay,
+                  ),
+                ),
+                width: width.cacheSize(context),
+              ),
+            ),
+          );
+  }
+
+  Widget icon(double width) {
+    return CachedNetworkImage(
+      width: width,
+      memCacheWidth: width.cacheSize(context),
+      fit: BoxFit.contain,
+      imageUrl: ImageUtils.thumbnailUrl(
+        isDarkMode ? moduleBlocked.icon!.imgDark : moduleBlocked.icon!.imgDay,
+      ),
+      placeholder: (_, _) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget btn(
+    BuildContext context, {
+    OutlinedBorder? shape,
+    VisualDensity? visualDensity,
+    EdgeInsetsGeometry? padding,
+  }) {
+    return FilledButton.tonal(
+      style: FilledButton.styleFrom(
+        padding: padding,
+        tapTargetSize: .shrinkWrap,
+        visualDensity: visualDensity,
+        backgroundColor: theme.colorScheme.btnColor,
+        foregroundColor: Colors.white,
+        shape: shape,
+      ),
+      onPressed: () {
+        if (moduleBlocked.button!.jumpUrl?.isNotEmpty == true) {
+          PiliScheme.routePushFromUrl(moduleBlocked.button!.jumpUrl!);
+        }
+      },
+      child: Row(
+        mainAxisSize: .min,
+        children: [
+          if (moduleBlocked.button!.icon?.isNotEmpty == true)
+            CachedNetworkImage(
+              height: 16,
+              color: Colors.white,
+              memCacheHeight: 16.cacheSize(context),
+              placeholder: (_, _) => const SizedBox.shrink(),
+              imageUrl: ImageUtils.safeThumbnailUrl(moduleBlocked.button!.icon),
+            ),
+          Text(moduleBlocked.button!.text ?? ''),
+        ],
+      ),
+    );
+  }
+
+  if (moduleBlocked.blockedType == 1) {
+    return Align(
+      alignment: .centerLeft,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          var maxWidth = constraints.maxWidth;
+          maxWidth = maxWidth <= 255 ? maxWidth : math.min(400, maxWidth * 0.8);
+          return Container(
+            width: maxWidth,
+            height: maxWidth,
+            decoration: bgImg(maxWidth),
+            padding: const .all(12),
+            child: Column(
+              mainAxisAlignment: .center,
+              children: [
+                if (moduleBlocked.icon != null)
+                  icon(math.max(40, maxWidth / 7)),
+                if (moduleBlocked.hintMessage?.isNotEmpty == true) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    moduleBlocked.hintMessage!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.outline),
+                  ),
+                ],
+                if (moduleBlocked.button != null) ...[
+                  const SizedBox(height: 8),
+                  btn(
+                    context,
+                    visualDensity: const VisualDensity(vertical: -2.5),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Container(
+        decoration: bgImg(constraints.maxWidth),
+        padding: const .all(12),
+        child: Row(
+          spacing: 8,
+          children: [
+            if (moduleBlocked.icon != null) icon(42),
+            Expanded(
+              child: Column(
+                spacing: 2,
+                mainAxisSize: .min,
+                crossAxisAlignment: .start,
+                children: [
+                  if (moduleBlocked.title?.isNotEmpty == true)
+                    Text(moduleBlocked.title!),
+                  if (moduleBlocked.hintMessage?.isNotEmpty == true)
+                    Text(
+                      moduleBlocked.hintMessage!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (moduleBlocked.button != null)
+              btn(
+                context,
+                visualDensity: const VisualDensity(
+                  vertical: -3,
+                  horizontal: -4,
+                ),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: .all(.circular(6)),
+                ),
+                padding: const .symmetric(horizontal: 10),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget opusCollection(ThemeData theme, ModuleCollection item) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Material(
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+      color: theme.colorScheme.onInverseSurface,
+      child: InkWell(
+        borderRadius: const BorderRadius.all(Radius.circular(8)),
+        onTap: () => Get.toNamed(
+          '/articleList',
+          parameters: {'id': '${item.id}'},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: .min,
+                  crossAxisAlignment: .start,
+                  children: [
+                    Text(item.title!),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          WidgetSpan(
+                            alignment: .middle,
+                            child: Icon(
+                              size: 18,
+                              Icons.article_outlined,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '${item.name} · ${item.count}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_right,
+                color: theme.colorScheme.outline,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}

@@ -1,0 +1,215 @@
+import 'dart:math';
+
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/widgets/flutter/list_tile.dart';
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
+import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
+import 'package:PiliPlus/common/widgets/loading_widget/loading_widget.dart';
+import 'package:PiliPlus/common/widgets/sliver/trending_header.dart';
+import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models_new/search/search_trending/list.dart';
+import 'package:PiliPlus/pages/search_trending/controller.dart';
+import 'package:PiliPlus/utils/color_utils.dart';
+import 'package:PiliPlus/utils/extension/context_ext.dart';
+import 'package:PiliPlus/utils/extension/get_ext.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/size_ext.dart';
+import 'package:PiliPlus/utils/image_utils.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
+import 'package:material_ui/material_ui.dart' hide ListTile;
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
+import 'package:get/get.dart';
+
+class SearchTrendingPage extends StatefulWidget {
+  const SearchTrendingPage({super.key});
+
+  @override
+  State<SearchTrendingPage> createState() => _SearchTrendingPageState();
+}
+
+class _SearchTrendingPageState extends State<SearchTrendingPage> {
+  final _controller = Get.putOrFind(SearchTrendingController.new);
+
+  late double _offset;
+  final RxDouble _scrollRatio = 0.0.obs;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final padding = MediaQuery.viewPaddingOf(context);
+    final size = context.mediaQuerySize;
+    final maxWidth = size.width - padding.horizontal;
+    final width = size.isPortrait ? maxWidth : min(640.0, maxWidth * 0.6);
+    final height = width * 528 / 1125;
+    _offset = height - 56 - padding.top;
+    return Material(
+      child: Stack(
+        children: [
+          Padding(
+            padding: .only(left: padding.left, right: padding.right),
+            child: Center(
+              child: SizedBox(
+                width: width,
+                child: refreshIndicator(
+                  onRefresh: _controller.onRefresh,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      TrendingHeader(
+                        offset: _offset,
+                        onScrollRatioChanged: _scrollRatio.call,
+                        child: Image.asset(
+                          width: width,
+                          height: height,
+                          cacheWidth: width.cacheSize(context),
+                          Assets.trendingBanner,
+                          filterQuality: .low,
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: .only(bottom: padding.bottom + 100),
+                        sliver: Obx(
+                          () =>
+                              _buildBody(theme, _controller.loadingState.value),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            right: 0,
+            child: Obx(
+              () {
+                final scrollRatio = _scrollRatio.value;
+                final flag = maxWidth > width || scrollRatio >= 0.5;
+                return AppBar(
+                  title: Opacity(
+                    opacity: scrollRatio,
+                    child: Text(
+                      'bilibili热搜',
+                      style: TextStyle(
+                        color: flag ? null : Colors.white,
+                      ),
+                    ),
+                  ),
+                  backgroundColor: theme.colorScheme.surface.withValues(
+                    alpha: scrollRatio,
+                  ),
+                  foregroundColor: flag ? null : Colors.white,
+                  systemOverlayStyle: flag
+                      ? null
+                      : const SystemUiOverlayStyle(
+                          statusBarBrightness: Brightness.dark,
+                          statusBarIconBrightness: Brightness.light,
+                        ),
+                  shape: scrollRatio == 1
+                      ? Border(
+                          bottom: BorderSide(
+                            color: theme.colorScheme.outline.withValues(
+                              alpha: 0.1,
+                            ),
+                          ),
+                        )
+                      : null,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(
+    ThemeData theme,
+    LoadingState<List<SearchTrendingItemModel>?> loadingState,
+  ) {
+    switch (loadingState) {
+      case Loading():
+        return linearLoading;
+      case Success(:final response):
+        if (response != null && response.isNotEmpty) {
+          final divider = Divider(
+            height: 1,
+            indent: 48,
+            color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          );
+          return SliverList.separated(
+            itemCount: response.length,
+            itemBuilder: (context, index) {
+              final item = response[index];
+              return ListTile(
+                dense: true,
+                onTap: () => Get.toNamed(
+                  '/searchResult',
+                  parameters: {
+                    'keyword': item.keyword!,
+                  },
+                ),
+                leading: index < _controller.topCount
+                    ? const Icon(
+                        size: 17,
+                        Icons.vertical_align_top_outlined,
+                        color: Color(0xFFd1403e),
+                      )
+                    : Text(
+                        '${index + 1 - _controller.topCount}',
+                        style: TextStyle(
+                          fontWeight: .bold,
+                          color: ColourUtils.index2Color(
+                            index - _controller.topCount,
+                            theme.colorScheme.outline,
+                          ),
+                          fontSize: 17,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        item.keyword!,
+                        maxLines: 1,
+                        overflow: .ellipsis,
+                        strutStyle: const StrutStyle(height: 1, leading: 0),
+                        style: const TextStyle(height: 1, fontSize: 15),
+                      ),
+                    ),
+                    if (item.icon?.isNotEmpty == true) ...[
+                      const SizedBox(width: 4),
+                      CachedNetworkImage(
+                        height: 16,
+                        memCacheHeight: 16.cacheSize(context),
+                        imageUrl: ImageUtils.thumbnailUrl(item.icon!),
+                        placeholder: (_, _) => const SizedBox.shrink(),
+                      ),
+                    ] else if (item.showLiveIcon == true) ...[
+                      const SizedBox(width: 4),
+                      Image.asset(
+                        Assets.livingRect,
+                        width: 51,
+                        height: 16,
+                        cacheHeight: 16.cacheSize(context),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+            separatorBuilder: (context, index) => divider,
+          );
+        }
+        return HttpError(onReload: _controller.onReload);
+      case Error(:final errMsg):
+        return HttpError(
+          errMsg: errMsg,
+          onReload: _controller.onReload,
+        );
+    }
+  }
+}

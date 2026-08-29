@@ -1,0 +1,622 @@
+import 'dart:math';
+
+import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
+import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart';
+import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/scaffold/mini_scaffold.dart';
+import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/common/widgets/scroll_physics.dart'
+    show tabBarScrollPhysics;
+import 'package:PiliPlus/common/widgets/sliver/sliver_to_box_adapter.dart';
+import 'package:PiliPlus/models/common/image_preview_type.dart';
+import 'package:PiliPlus/models/dynamics/article_content_model.dart' show Pic;
+import 'package:PiliPlus/models/dynamics/result.dart' show DynamicStat;
+import 'package:PiliPlus/pages/article/controller.dart';
+import 'package:PiliPlus/pages/article/widgets/article_ops.dart';
+import 'package:PiliPlus/pages/article/widgets/html_render.dart';
+import 'package:PiliPlus/pages/article/widgets/opus_content.dart';
+import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
+import 'package:PiliPlus/pages/dynamics_repost/view.dart';
+import 'package:PiliPlus/utils/date_utils.dart';
+import 'package:PiliPlus/utils/extension/get_ext.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/grid.dart';
+import 'package:PiliPlus/utils/image_utils.dart';
+import 'package:PiliPlus/utils/num_utils.dart';
+import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
+import 'package:PiliPlus/utils/utils.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get/get.dart';
+import 'package:html/parser.dart' as parser;
+import 'package:material_ui/material_ui.dart';
+
+class ArticlePage extends StatefulWidget {
+  const ArticlePage({super.key});
+
+  @override
+  State<ArticlePage> createState() => _ArticlePageState();
+}
+
+class _ArticlePageState extends CommonDynPageState<ArticlePage> {
+  @override
+  final ArticleController controller = Get.putOrFind(
+    ArticleController.new,
+    tag: Get.parameters['type']! + Get.parameters['id']!,
+  );
+
+  @override
+  dynamic get arguments => {
+    'id': controller.id,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return fabAnimWrapper(
+      child: SimpleScaffold(
+        appBar: _buildAppBar(),
+        body: Padding(
+          padding: .only(left: padding.left, right: padding.right),
+          child: _buildPage(),
+        ),
+        fab: SlideTransition(
+          position: fabAnimation,
+          child: _buildBottom(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPage() {
+    double padding = max(maxWidth / 2 - Grid.smallCardWidth, 0);
+    if (isPortrait) {
+      return Padding(
+        padding: .symmetric(horizontal: padding),
+        child: SelectionArea(
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              _buildContent(
+                maxWidth - this.padding.horizontal - 2 * padding - 24,
+              ),
+              SelectionContainer.disabled(
+                child: SliverToBoxAdapter(
+                  child: Divider(
+                    thickness: 8,
+                    color: theme.dividerColor.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+              SelectionContainer.disabled(child: buildReplyHeader()),
+              SelectionContainer.disabled(
+                child: Obx(() => replyList(controller.loadingState.value)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    padding = padding / 4;
+    final flex = controller.ratio[0].toInt();
+    final flex1 = controller.ratio[1].toInt();
+    return Row(
+      crossAxisAlignment: .start,
+      children: [
+        Expanded(
+          flex: flex,
+          child: SelectionArea(
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: .only(
+                    left: padding,
+                    bottom: this.padding.bottom + 100,
+                  ),
+                  sliver: _buildContent(
+                    (maxWidth - this.padding.horizontal) *
+                            flex /
+                            (flex + flex1) -
+                        padding -
+                        32,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        VerticalDivider(
+          thickness: 8,
+          color: theme.dividerColor.withValues(alpha: 0.05),
+        ),
+        Expanded(
+          flex: flex1,
+          child: Padding(
+            padding: .only(right: padding),
+            child: MiniScaffold(
+              body: refreshIndicator(
+                onRefresh: controller.onRefresh,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    buildReplyHeader(),
+                    Obx(() => replyList(controller.loadingState.value)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(double maxWidth) => SliverPadding(
+    padding: const .symmetric(horizontal: 12, vertical: 8),
+    sliver: Obx(
+      () {
+        if (controller.isLoaded.value) {
+          final Widget content;
+          if (controller.opus != null) {
+            // if (kDebugMode) debugPrint('json page');
+            content = OpusContent(
+              opus: controller.opus!,
+              images: controller.images,
+              maxWidth: maxWidth,
+              opusId: controller.id,
+            );
+          } else if (controller.opusData?.modules.moduleBlocked
+              case final moduleBlocked?) {
+            // if (kDebugMode) debugPrint('moduleBlocked');
+            content = SliverToBoxAdapter(
+              child: moduleBlockedItem(context, theme, moduleBlocked),
+            );
+          } else if (controller.articleData?.content != null) {
+            if (controller.articleData?.type == 3) {
+              // json
+              return ArticleOpus(
+                ops: controller.articleData?.ops,
+                maxWidth: maxWidth,
+              );
+            }
+            // if (kDebugMode) debugPrint('html page');
+            final res = parser.parse(controller.articleData!.content!);
+            if (res.body!.children.isEmpty) {
+              content = SliverToBoxAdapter(
+                child: htmlRender(
+                  context: context,
+                  html: controller.articleData!.content!,
+                  maxWidth: maxWidth,
+                ),
+              );
+            } else {
+              content = SliverList.separated(
+                itemCount: res.body!.children.length,
+                itemBuilder: (context, index) {
+                  return htmlRender(
+                    context: context,
+                    element: res.body!.children[index],
+                    maxWidth: maxWidth,
+                  );
+                },
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+              );
+            }
+          } else {
+            content = const SliverToBoxAdapter(child: Text('NULL'));
+          }
+
+          return SliverMainAxisGroup(
+            slivers: [
+              if (controller.type != 'read')
+                if (controller.opusData?.modules.moduleTop?.display?.album?.pics
+                    case final pics? when pics.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildImageGallery(pics)),
+              if (controller.summary.title != null)
+                SliverToBoxWithVisibilityAdapter(
+                  onVisibilityChanged: controller.showTitle.call,
+                  child: Text(
+                    controller.summary.title!,
+                    style: const TextStyle(fontSize: 17, fontWeight: .bold),
+                  ),
+                ),
+              SliverToBoxAdapter(child: _buildAuthor()),
+              if (controller.type != 'read' &&
+                  controller.opusData?.modules.moduleCollection != null)
+                SliverToBoxAdapter(
+                  child: SelectionContainer.disabled(
+                    child: opusCollection(
+                      theme,
+                      controller.opusData!.modules.moduleCollection!,
+                    ),
+                  ),
+                ),
+              content,
+            ],
+          );
+        }
+
+        return const SliverToBoxAdapter();
+      },
+    ),
+  );
+
+  PreferredSizeWidget _buildAppBar() => AppBar(
+    title: Obx(() {
+      if (controller.isLoaded.value && controller.showTitle.value) {
+        return Text(controller.summary.title!);
+      }
+      return const SizedBox.shrink();
+    }),
+    actions: [
+      const SizedBox(width: 4),
+      if (!isPortrait) ratioWidget(maxWidth),
+      IconButton(
+        tooltip: '浏览器打开',
+        onPressed: () => PageUtils.inAppWebview(controller.url),
+        icon: const Icon(Icons.open_in_browser_outlined, size: 19),
+      ),
+      PopupMenuButton(
+        icon: const Icon(Icons.more_vert, size: 19),
+        itemBuilder: (BuildContext context) => <PopupMenuEntry>[
+          PopupMenuItem(
+            onTap: () => ShareUtils.shareText(controller.url),
+            child: const Row(
+              spacing: 10,
+              mainAxisSize: .min,
+              children: [
+                Icon(Icons.share_outlined, size: 19),
+                Text('分享'),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            onTap: () => Utils.copyText(controller.url),
+            child: const Row(
+              spacing: 10,
+              mainAxisSize: .min,
+              children: [
+                Icon(Icons.copy_rounded, size: 19),
+                Text('复制链接'),
+              ],
+            ),
+          ),
+          if (controller.commentType == 12 &&
+              controller.stats.value != null &&
+              controller.opusData?.modules.moduleBlocked == null)
+            PopupMenuItem(
+              onTap: () async {
+                final summary = controller.summary;
+                try {
+                  if (summary.cover == null) {
+                    if (!await controller.getArticleInfo(true)) {
+                      return;
+                    }
+                  }
+                  if (mounted) {
+                    PageUtils.pmShare(
+                      this.context,
+                      content: {
+                        "id": controller.commentId,
+                        "title": "- 哔哩哔哩专栏",
+                        "headline": summary.title!, // throw
+                        "source": 6,
+                        "thumb": summary.cover!,
+                        "author": summary.author!.name,
+                        "author_id": summary.author!.mid.toString(),
+                      },
+                    );
+                  }
+                } catch (e) {
+                  SmartDialog.showToast(e.toString());
+                }
+              },
+              child: const Row(
+                spacing: 10,
+                mainAxisSize: .min,
+                children: [
+                  Icon(Icons.forward_to_inbox, size: 19),
+                  Text('分享至消息'),
+                ],
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(width: 6),
+    ],
+  );
+
+  Widget _buildBottom() {
+    if (!controller.showDynActionBar) {
+      return fabButton;
+    }
+
+    late final primary = theme.colorScheme.primary;
+    late final outline = theme.colorScheme.outline;
+    late final btnStyle = TextButton.styleFrom(
+      tapTargetSize: .padded,
+      padding: const .symmetric(horizontal: 15),
+      foregroundColor: outline,
+    );
+
+    Widget textIconButton({
+      required IconData icon,
+      required String text,
+      required DynamicStat? stat,
+      required VoidCallback onPressed,
+      IconData? activatedIcon,
+    }) {
+      final status = stat?.status == true;
+      final color = status ? primary : outline;
+      return TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          status ? activatedIcon : icon,
+          size: 16,
+          color: color,
+        ),
+        style: btnStyle,
+        label: Text(
+          stat?.count != null ? NumUtils.numFormat(stat!.count) : text,
+          style: TextStyle(color: color),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: .only(left: padding.left, right: padding.right),
+      child: Obx(() {
+        final stats = controller.stats.value;
+
+        Widget btn = Padding(
+          padding: .only(
+            right: kFloatingActionButtonMargin,
+            bottom:
+                kFloatingActionButtonMargin +
+                (stats != null ? 0 : padding.bottom),
+          ),
+          child: replyButton,
+        );
+
+        if (stats == null) {
+          return Align(alignment: .bottomRight, child: btn);
+        }
+
+        return Column(
+          mainAxisSize: .min,
+          crossAxisAlignment: .end,
+          children: [
+            btn,
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              padding: .only(bottom: padding.bottom),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Builder(
+                      builder: (btnContext) {
+                        final forward = stats.forward;
+                        return textIconButton(
+                          text: '转发',
+                          icon: FontAwesomeIcons.shareFromSquare,
+                          stat: forward,
+                          onPressed: () {
+                            if (controller.opusData == null &&
+                                controller.articleData?.dynIdStr == null) {
+                              SmartDialog.showToast(
+                                'err: ${controller.id}',
+                              );
+                              return;
+                            }
+                            final summary = controller.summary;
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              useSafeArea: true,
+                              builder: (context) => RepostPanel(
+                                item: controller.opusData,
+                                dynIdStr: controller.articleData?.dynIdStr,
+                                pic: summary.cover,
+                                title: summary.title,
+                                uname: summary.author?.name,
+                                onSuccess: () {
+                                  if (forward != null) {
+                                    int count = forward.count ?? 0;
+                                    forward.count = count + 1;
+                                    if (btnContext.mounted) {
+                                      (btnContext as Element?)
+                                          ?.markNeedsBuild();
+                                    }
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: textIconButton(
+                      text: '分享',
+                      icon: CustomIcons.share_node,
+                      stat: null,
+                      onPressed: () => ShareUtils.shareText(controller.url),
+                    ),
+                  ),
+                  Expanded(
+                    child: textIconButton(
+                      icon: FontAwesomeIcons.star,
+                      activatedIcon: FontAwesomeIcons.solidStar,
+                      text: '收藏',
+                      stat: stats.favorite,
+                      onPressed: controller.onFav,
+                    ),
+                  ),
+                  Expanded(
+                    child: textIconButton(
+                      icon: FontAwesomeIcons.thumbsUp,
+                      activatedIcon: FontAwesomeIcons.solidThumbsUp,
+                      text: '点赞',
+                      stat: stats.like,
+                      onPressed: controller.onLike,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget? _buildImageGallery(List<Pic> pics) {
+    final length = pics.length;
+    final first = pics.first;
+    double height;
+    if (first.height != null && first.width != null) {
+      final ratio = first.height! / first.width!;
+      height = min(maxWidth * ratio, maxHeight * 0.55);
+    } else {
+      height = maxHeight * 0.55;
+    }
+    return Stack(
+      clipBehavior: .none,
+      children: [
+        Container(
+          height: height,
+          width: maxWidth,
+          margin: const .only(bottom: 10),
+          child: PageView.builder(
+            physics: tabBarScrollPhysics,
+            horizontalDragGestureRecognizer:
+                CustomHorizontalDragGestureRecognizer.new,
+            onPageChanged: controller.topIndex.call,
+            itemCount: length,
+            itemBuilder: (context, index) {
+              final pic = pics[index];
+              int? memCacheWidth, memCacheHeight;
+              if (pic.isLongPic ?? false) {
+                memCacheWidth = maxWidth.cacheSize(context);
+              } else if (pic.width != null && pic.height != null) {
+                if (pic.width! > pic.height!) {
+                  memCacheWidth = maxWidth.cacheSize(
+                    context,
+                  );
+                } else {
+                  memCacheHeight = height.cacheSize(
+                    context,
+                  );
+                }
+              }
+              return GestureDetector(
+                behavior: .opaque,
+                onTap: () => PageUtils.imageView(
+                  quality: 60,
+                  imgList: pics.map((e) => SourceModel(url: e.url!)).toList(),
+                  initialPage: index,
+                ),
+                child: Hero(
+                  tag: pic.url!,
+                  child: Stack(
+                    clipBehavior: .none,
+                    alignment: Alignment.center,
+                    children: [
+                      CachedNetworkImage(
+                        height: height,
+                        width: maxWidth,
+                        memCacheWidth: memCacheWidth,
+                        memCacheHeight: memCacheHeight,
+                        fit: pic.isLongPic == true ? BoxFit.cover : null,
+                        imageUrl: ImageUtils.thumbnailUrl(pic.url, 60),
+                        fadeInDuration: const Duration(milliseconds: 120),
+                        fadeOutDuration: const Duration(milliseconds: 120),
+                        placeholder: (_, _) => const SizedBox.shrink(),
+                      ),
+                      if (pic.isLongPic == true)
+                        const PBadge(
+                          right: 12,
+                          bottom: 12,
+                          text: '长图',
+                          type: .primary,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Obx(
+          () => PBadge(
+            top: 12,
+            right: 12,
+            type: .gray,
+            text: '${controller.topIndex.value + 1}/$length',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget? _buildAuthor() {
+    final pubTime =
+        controller.opusData?.modules.moduleAuthor?.pubTs ??
+        controller.articleData?.publishTime;
+    return Padding(
+      padding: const .symmetric(vertical: 10),
+      child: GestureDetector(
+        onTap: () => Get.toNamed(
+          '/member?mid=${controller.summary.author?.mid}',
+        ),
+        child: SelectionContainer.disabled(
+          child: Row(
+            spacing: 10,
+            children: [
+              NetworkImgLayer(
+                width: 40,
+                height: 40,
+                type: .avatar,
+                src: controller.summary.author?.face,
+              ),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: .start,
+                  children: [
+                    Text(
+                      controller.summary.author?.name ?? '',
+                      style: TextStyle(
+                        fontSize: theme.textTheme.titleSmall!.fontSize,
+                      ),
+                    ),
+                    if (pubTime != null)
+                      Text(
+                        DateFormatUtils.format(pubTime),
+                        style: TextStyle(
+                          color: theme.colorScheme.outline,
+                          fontSize: theme.textTheme.labelSmall!.fontSize,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

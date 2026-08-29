@@ -1,0 +1,424 @@
+import 'package:PiliPlus/common/assets.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
+import 'package:PiliPlus/common/widgets/dynamic_sliver_app_bar/dynamic_sliver_app_bar.dart';
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
+import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/loading_widget/http_error.dart';
+import 'package:PiliPlus/common/widgets/pair.dart';
+import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_pinned_header.dart';
+import 'package:PiliPlus/http/constants.dart';
+import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models/common/image_type.dart';
+import 'package:PiliPlus/models_new/dynamic/dyn_topic_feed/fold_card_item.dart';
+import 'package:PiliPlus/models_new/dynamic/dyn_topic_feed/item.dart';
+import 'package:PiliPlus/models_new/dynamic/dyn_topic_top/top_details.dart';
+import 'package:PiliPlus/pages/common/fab_mixin.dart';
+import 'package:PiliPlus/pages/dynamics/widgets/dynamic_panel.dart';
+import 'package:PiliPlus/pages/dynamics_create/view.dart';
+import 'package:PiliPlus/pages/dynamics_topic/controller.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/theme_ext.dart';
+import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/num_utils.dart';
+import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
+import 'package:PiliPlus/utils/theme_utils.dart';
+import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliPlus/utils/waterfall.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get/get.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:waterfall_flow/waterfall_flow.dart'
+    hide SliverWaterfallFlowDelegateWithMaxCrossAxisExtent;
+
+class DynTopicPage extends StatefulWidget {
+  const DynTopicPage({super.key});
+
+  @override
+  State<DynTopicPage> createState() => _DynTopicPageState();
+}
+
+class _DynTopicPageState extends State<DynTopicPage>
+    with DynMixin, SingleTickerProviderStateMixin, BaseFabMixin, FabMixin {
+  late EdgeInsets padding;
+  late ColorScheme colorScheme;
+  final DynTopicController _controller = Get.put(
+    DynTopicController(),
+    tag: Utils.generateRandomString(8),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    colorScheme = ColorScheme.of(context);
+    padding = MediaQuery.viewPaddingOf(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleScaffold(
+      body: refreshIndicator(
+        onRefresh: _controller.onRefresh,
+        child: fabAnimWrapper(
+          child: CustomScrollView(
+            controller: _controller.scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              Obx(
+                () => _buildAppBar(
+                  colorScheme,
+                  padding,
+                  _controller.topState.value,
+                ),
+              ),
+              Obx(() {
+                final allSortBy = _controller.topicSortByConf.value?.allSortBy;
+                if (allSortBy != null && allSortBy.isNotEmpty) {
+                  return SliverPinnedHeader(
+                    backgroundColor: colorScheme.surface,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: 12 + padding.left,
+                        top: 6,
+                        bottom: 6,
+                      ),
+                      child: Builder(
+                        builder: (context) {
+                          return ToggleButtons(
+                            fillColor: colorScheme.secondaryContainer,
+                            selectedColor: colorScheme.onSecondaryContainer,
+                            constraints: const BoxConstraints(
+                              minWidth: 54,
+                              minHeight: 24,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            borderRadius: const .all(.circular(25)),
+                            onPressed: (index) {
+                              _controller.onSort(allSortBy[index].sortBy!);
+                              (context as Element).markNeedsBuild();
+                            },
+                            isSelected: allSortBy
+                                .map((e) => e.sortBy == _controller.sortBy)
+                                .toList(),
+                            children: allSortBy.map((e) {
+                              return Text(
+                                e.sortName!,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1,
+                                ),
+                                strutStyle: const StrutStyle(
+                                  height: 1,
+                                  leading: 0,
+                                  fontSize: 13,
+                                ),
+                                textScaler: TextScaler.noScaling,
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                }
+                return const SliverToBoxAdapter();
+              }),
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  left: padding.left,
+                  right: padding.right,
+                  bottom: padding.bottom + 100,
+                ),
+                sliver: buildPage(
+                  Obx(() => _buildBody(_controller.loadingState.value)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      fab: SlideTransition(
+        position: fabAnimation,
+        child: Padding(
+          padding: .only(
+            right: kFloatingActionButtonMargin + padding.right,
+            bottom: kFloatingActionButtonMargin + padding.bottom,
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () {
+              if (_controller.isLogin) {
+                CreateDynPanel.onCreateDyn(
+                  context,
+                  topic: Pair(
+                    first: int.parse(_controller.topicId),
+                    second: _controller.topicName,
+                  ),
+                );
+              } else {
+                SmartDialog.showToast('账号未登录');
+              }
+            },
+            icon: const Icon(CustomIcons.topic_tag, size: 20),
+            label: const Text('参与话题'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(
+    ColorScheme colorScheme,
+    EdgeInsets padding,
+    LoadingState<TopDetails?> topState,
+  ) {
+    return switch (topState) {
+      Loading() => const SliverAppBar(),
+      Success(:final response) when response != null => DynamicSliverAppBar.medium(
+        onPerformLayout: (value) => _controller.appbarOffset =
+            value.height - kToolbarHeight - padding.top,
+        title: IgnorePointer(child: Text(response.topicItem!.name)),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: ResizeImage(
+                width: MediaQuery.widthOf(context).cacheSize(context),
+                const AssetImage(Assets.topicHeader),
+              ),
+              filterQuality: FilterQuality.low,
+              fit: BoxFit.cover,
+            ),
+          ),
+          padding: EdgeInsets.only(
+            top: padding.top,
+            left: 12 + padding.left,
+            right: 12 + padding.right,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: kToolbarHeight,
+                alignment: Alignment.centerLeft,
+                margin: const EdgeInsets.only(left: 45, right: 78),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Get.toNamed(
+                    '/member?mid=${response.topicCreator!.uid}',
+                  ),
+                  child: Row(
+                    spacing: 10,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      NetworkImgLayer(
+                        width: 28,
+                        height: 28,
+                        src: response.topicCreator!.face!,
+                        type: ImageType.avatar,
+                      ),
+                      Flexible(
+                        child: Text(
+                          response.topicCreator!.name!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        ' 发起',
+                        style: TextStyle(color: colorScheme.outline),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Text(
+                response.topicItem!.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              SelectionText(
+                response.topicItem!.description!,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Text(
+                    '${NumUtils.numFormat(response.topicItem!.view)}浏览 · ${NumUtils.numFormat(response.topicItem!.discuss)}讨论',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.outline,
+                    ),
+                  ),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        width: 1,
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                      ),
+                      foregroundColor: _controller.isLike.value
+                          ? null
+                          : colorScheme.onSurfaceVariant,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      visualDensity: const VisualDensity(
+                        horizontal: -4,
+                        vertical: -4,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _controller.onLike,
+                    icon: _controller.isLike.value
+                        ? const Icon(FontAwesomeIcons.solidThumbsUp, size: 13)
+                        : const Icon(FontAwesomeIcons.thumbsUp, size: 13),
+                    label: Text(
+                      NumUtils.numFormat(response.topicItem!.like),
+                      style: const TextStyle(fontSize: 13),
+                      textScaler: TextScaler.noScaling,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        width: 1,
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                      ),
+                      foregroundColor: _controller.isFav.value
+                          ? null
+                          : colorScheme.onSurfaceVariant,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      visualDensity: const .new(horizontal: -4, vertical: -4),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _controller.onFav,
+                    icon: _controller.isFav.value
+                        ? const Icon(FontAwesomeIcons.solidStar, size: 13)
+                        : const Icon(FontAwesomeIcons.star, size: 13),
+                    label: Text(
+                      NumUtils.numFormat(response.topicItem!.fav),
+                      style: const TextStyle(fontSize: 13),
+                      textScaler: TextScaler.noScaling,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => ShareUtils.shareText(
+              '${_controller.topicName} https://m.bilibili.com/topic-detail?topic_id=${_controller.topicId}',
+            ),
+            // https://www.bilibili.com/v/topic/detail?topic_id=${_controller.topicId}
+            icon: const Icon(MdiIcons.share),
+          ),
+          PopupMenuButton(
+            itemBuilder: (context) {
+              return [
+                PopupMenuItem(
+                  onTap: _controller.onFav,
+                  child: Text(
+                    '${_controller.isFav.value ? '取消' : ''}收藏',
+                  ),
+                ),
+                PopupMenuItem(
+                  child: const Text('举报'),
+                  onTap: () {
+                    if (!_controller.isLogin) {
+                      SmartDialog.showToast('账号未登录');
+                      return;
+                    }
+                    PageUtils.inAppWebview(
+                      '${HttpString.baseUrl}/h5/topic-active/topic-report?topic_id=${_controller.topicId}&topic_name=${_controller.topicName}&${ThemeUtils.themeUrl(colorScheme.isDark)}',
+                    );
+                  },
+                ),
+              ];
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      _ => SliverAppBar(
+        pinned: true,
+        title: Text(_controller.topicName),
+      ),
+    };
+  }
+
+  Widget _buildBody(LoadingState<List<TopicCardItem>?> loadingState) {
+    return switch (loadingState) {
+      Loading() => dynSkeleton,
+      Success(:final response) =>
+        response != null && response.isNotEmpty
+            ? GlobalData().dynamicsWaterfallFlow
+                  ? SliverWaterfallFlow(
+                      gridDelegate: dynGridDelegate,
+                      delegate: SliverChildBuilderDelegate(
+                        (_, index) => _itemBuilder(response, index),
+                        childCount: response.length,
+                      ),
+                    )
+                  : SliverList.builder(
+                      itemBuilder: (context, index) =>
+                          _itemBuilder(response, index),
+                      itemCount: response.length,
+                    )
+            : HttpError(onReload: _controller.onReload),
+      Error(:final errMsg) => HttpError(
+        errMsg: errMsg,
+        onReload: _controller.onReload,
+      ),
+    };
+  }
+
+  Widget _itemBuilder(List<TopicCardItem> list, int index) {
+    if (index == list.length - 1) {
+      _controller.onLoadMore();
+    }
+
+    final item = list[index];
+
+    if (item.dynamicCardItem case final dynamicCardItem?) {
+      return DynamicPanel(item: dynamicCardItem);
+    }
+
+    if (item.foldCardItem case final foldCardItem?) {
+      return _buildFoldItem(foldCardItem);
+    }
+
+    return Text(item.topicType ?? 'err');
+  }
+
+  Widget _buildFoldItem(FoldCardItem item) {
+    return Padding(
+      padding: const .only(top: 12),
+      child: Material(
+        color: colorScheme.outline.withValues(alpha: .05),
+        child: InkWell(
+          onTap: _controller.topicFold,
+          child: Padding(
+            padding: const .symmetric(vertical: 10),
+            child: Row(
+              mainAxisSize: .min,
+              mainAxisAlignment: .center,
+              children: [
+                Text(item.foldDesc!),
+                const Icon(Icons.keyboard_arrow_right, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

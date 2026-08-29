@@ -1,0 +1,692 @@
+import 'dart:io';
+import 'dart:math';
+
+import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
+import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
+import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
+import 'package:PiliPlus/common/widgets/marquee.dart';
+import 'package:PiliPlus/common/widgets/scaffold/mini_scaffold.dart';
+import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/common/widgets/selection_text.dart';
+import 'package:PiliPlus/common/widgets/sliver/sliver_to_box_adapter.dart';
+import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/http/music.dart';
+import 'package:PiliPlus/models/common/image_preview_type.dart';
+import 'package:PiliPlus/models/common/image_type.dart';
+import 'package:PiliPlus/models_new/music/bgm_detail.dart';
+import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
+import 'package:PiliPlus/pages/music/controller.dart';
+import 'package:PiliPlus/pages/music/video/view.dart';
+import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
+import 'package:PiliPlus/utils/date_utils.dart';
+import 'package:PiliPlus/utils/extension/get_ext.dart';
+import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/string_ext.dart';
+import 'package:PiliPlus/utils/grid.dart';
+import 'package:PiliPlus/utils/num_utils.dart';
+import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/utils/share_utils.dart';
+import 'package:PiliPlus/utils/utils.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+
+class MusicDetailPage extends StatefulWidget {
+  const MusicDetailPage({super.key});
+
+  @override
+  State<MusicDetailPage> createState() => _MusicDetailPageState();
+}
+
+class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
+  @override
+  final MusicDetailController controller = Get.putOrFind(
+    MusicDetailController.new,
+    tag: Get.parameters['musicId']!,
+  );
+
+  @override
+  dynamic get arguments => null;
+
+  @override
+  Widget build(BuildContext context) {
+    return fabAnimWrapper(
+      child: SimpleScaffold(
+        appBar: _buildAppBar(),
+        body: Padding(
+          padding: EdgeInsets.only(left: padding.left, right: padding.right),
+          child: isPortrait
+              ? refreshIndicator(
+                  onRefresh: controller.onRefresh,
+                  child: _buildBody(),
+                )
+              : _buildBody(),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() => AppBar(
+    title: Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Obx(
+        () {
+          if (controller.infoState.value case Success(:final response)) {
+            final showTitle = controller.showTitle.value;
+            return AnimatedOpacity(
+              opacity: showTitle ? 1 : 0,
+              duration: const Duration(milliseconds: 300),
+              child: IgnorePointer(
+                ignoring: !showTitle,
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    NetworkImgLayer(
+                      src: response.mvCover,
+                      width: 36,
+                      height: 36,
+                      type: ImageType.avatar,
+                    ),
+                    Text(response.musicTitle!),
+                  ],
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    ),
+    actions: isPortrait
+        ? null
+        : [
+            ratioWidget(maxWidth),
+            const SizedBox(width: 16),
+          ],
+  );
+
+  Widget _buildBody() => Obx(() {
+    switch (controller.infoState.value) {
+      case Success(:final response):
+        double padding = max(maxWidth / 2 - Grid.smallCardWidth, 0);
+        final Widget child;
+        if (isPortrait) {
+          child = Padding(
+            padding: EdgeInsets.symmetric(horizontal: padding),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxWithOffsetAdapter(
+                  offset: 45,
+                  onVisibilityChanged: controller.showTitle.call,
+                  child: _buildCard(response, maxWidth),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildChart(response, maxWidth),
+                ),
+                buildReplyHeader(),
+                Obx(() => replyList(controller.loadingState.value)),
+              ],
+            ),
+          );
+        } else {
+          padding = padding / 4;
+          final flex = controller.ratio[0].toInt();
+          final flex1 = controller.ratio[1].toInt();
+          final leftWidth =
+              (maxWidth - this.padding.horizontal) * (flex / (flex + flex1)) -
+              padding;
+          child = Row(
+            children: [
+              Expanded(
+                flex: flex,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        left: padding,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildCard(response, leftWidth),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        left: padding,
+                        bottom: this.padding.bottom + 100,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildChart(response, leftWidth),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: flex1,
+                child: Padding(
+                  padding: EdgeInsets.only(right: padding),
+                  child: MiniScaffold(
+                    body: refreshIndicator(
+                      onRefresh: controller.onRefresh,
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          buildReplyHeader(),
+                          Obx(
+                            () => replyList(controller.loadingState.value),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        return ScaffoldLayout(
+          body: child,
+          fab: _buildBottom(response),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  });
+
+  Widget _buildBottom(MusicDetail item) {
+    if (!controller.showDynActionBar) {
+      return Padding(
+        padding: const .only(right: kFloatingActionButtonMargin),
+        child: SlideTransition(
+          position: fabAnimation,
+          child: fabButton,
+        ),
+      );
+    }
+
+    final primary = theme.colorScheme.primary;
+    final outline = theme.colorScheme.outline;
+    final style = TextButton.styleFrom(
+      tapTargetSize: .padded,
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      foregroundColor: outline,
+    );
+
+    Widget textIconButton({
+      required IconData icon,
+      required String text,
+      int? count,
+      bool status = false,
+      required VoidCallback onPressed,
+      IconData? activatedIcon,
+    }) {
+      final color = status ? primary : outline;
+      return TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          status ? activatedIcon : icon,
+          size: 16,
+          color: color,
+        ),
+        style: style,
+        label: Text(
+          count != null ? NumUtils.numFormat(count) : text,
+          style: TextStyle(color: color),
+        ),
+      );
+    }
+
+    return SlideTransition(
+      position: fabAnimation,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(
+              right: kFloatingActionButtonMargin,
+              bottom: kFloatingActionButtonMargin,
+            ),
+            child: replyButton,
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outline.withValues(
+                    alpha: 0.08,
+                  ),
+                ),
+              ),
+            ),
+            padding: EdgeInsets.only(bottom: padding.bottom),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                // TODO
+                // Expanded(
+                //   child: textIconButton(
+                //     icon: FontAwesomeIcons.shareFromSquare,
+                //     text: '转发',
+                //     count: item.musicShares,
+                //     onPressed: () {
+                //       final data = controller.infoState.value.dataOrNull;
+                //       if (data != null) {
+                //         showModalBottomSheet(
+                //           context: context,
+                //           isScrollControlled: true,
+                //           useSafeArea: true,
+                //           builder: (context) => RepostPanel(
+                //             rid: controller.oid,
+                //             dynType: null,
+                //             pic: data.mvCover,
+                //             title: data.musicTitle,
+                //           ),
+                //         );
+                //       }
+                //     },
+                //   ),
+                // ),
+                Expanded(
+                  child: textIconButton(
+                    icon: CustomIcons.share_node,
+                    text: '分享',
+                    onPressed: () => ShareUtils.shareText(controller.shareUrl),
+                  ),
+                ),
+                Expanded(
+                  child: Builder(
+                    builder: (context) => textIconButton(
+                      icon: FontAwesomeIcons.thumbsUp,
+                      activatedIcon: FontAwesomeIcons.solidThumbsUp,
+                      text: '点赞',
+                      count: item.wishCount,
+                      status: item.wishListen ?? false,
+                      onPressed: () async {
+                        if (!Accounts.main.isLogin) {
+                          SmartDialog.showToast('请先登录');
+                          return;
+                        }
+                        final hasLike = item.wishListen ?? false;
+                        final res = await MusicHttp.wishUpdate(
+                          controller.musicId,
+                          hasLike,
+                        );
+                        if (res.isSuccess) {
+                          if (hasLike) {
+                            item.wishCount--;
+                          } else {
+                            item.wishCount++;
+                          }
+                          item.wishListen = !hasLike;
+                          if (context.mounted) {
+                            (context as Element).markNeedsBuild();
+                          }
+                        } else {
+                          res.toast();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArtist(Artist artist, TextStyle? style) {
+    Widget child = Text('${artist.identity}: ${artist.name}', style: style);
+    if (!artist.face.isNullOrEmpty) {
+      child = Row(
+        spacing: 2,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          NetworkImgLayer(
+            src: artist.face,
+            width: 15,
+            height: 15,
+            type: ImageType.avatar,
+          ),
+          child,
+        ],
+      );
+    }
+    child = GestureDetector(
+      onTap: artist.mid == null || artist.mid == 0
+          ? () => Utils.copyText(artist.name!)
+          : () => Get.toNamed(
+              '/member',
+              parameters: {'mid': artist.mid!.toString()},
+            ),
+      child: child,
+    );
+    return child;
+  }
+
+  Widget _buildRank(
+    int? rank,
+    String name, [
+    VoidCallback? onTap,
+  ]) {
+    final outline = theme.colorScheme.outline;
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(NumUtils.numFormat(rank)),
+        Text(
+          name,
+          style: theme.textTheme.bodySmall!.copyWith(color: outline),
+        ),
+      ],
+    );
+    return onTap == null
+        ? child
+        : InkWell(
+            onTap: onTap,
+            borderRadius: const BorderRadius.all(Radius.circular(6)),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  child,
+                  Icon(
+                    size: 18,
+                    color: outline,
+                    Icons.keyboard_arrow_right,
+                  ),
+                ],
+              ),
+            ),
+          );
+  }
+
+  Widget _buildCard(MusicDetail item, double maxWidth) {
+    final textTheme = theme.textTheme;
+    return SizedBox(
+      width: maxWidth,
+      child: Card(
+        margin: const EdgeInsets.all(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                spacing: 10,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => PageUtils.imageView(
+                      imgList: [SourceModel(url: item.mvCover!)],
+                    ),
+                    child: fromHero(
+                      tag: item.mvCover!,
+                      child: NetworkImgLayer(
+                        src: item.mvCover,
+                        width: 80,
+                        height: 80,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      spacing: 2,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () => _searchMusic(item),
+                          onLongPress: () => Utils.copyText(item.musicTitle!),
+                          behavior: HitTestBehavior.opaque,
+                          child: MarqueeText(
+                            item.musicTitle!,
+                            spacing: 30,
+                            style: textTheme.titleMedium,
+                          ),
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 2,
+                          children: [
+                            if (!item.artistsList.isNullOrEmpty)
+                              for (final artist in item.artistsList!)
+                                _buildArtist(artist, textTheme.bodySmall),
+                            if (!item.musicPublish.isNullOrEmpty)
+                              Text(
+                                '发行日期：${item.musicPublish}',
+                                style: textTheme.bodySmall!.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Wrap(
+                          spacing: 16,
+                          children: [
+                            if (item.achievement.isNotEmpty)
+                              for (var i in item.achievement)
+                                if (i.isNotEmpty)
+                                  PBadge(
+                                    text: i,
+                                    type: .secondary,
+                                    isStack: false,
+                                    fontSize: 11,
+                                  ),
+                            if (item.mvCid != 0)
+                              GestureDetector(
+                                onTap: () => PageUtils.toVideoPage(
+                                  bvid: item.mvBvid,
+                                  cid: item.mvCid,
+                                  aid: item.mvAid,
+                                ),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: const .all(.circular(4)),
+                                    color: theme.colorScheme.secondaryContainer
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                  child: Padding(
+                                    padding: const .symmetric(
+                                      vertical: 3,
+                                      horizontal: 4,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: .min,
+                                      children: [
+                                        Icon(
+                                          Icons.play_circle_outline,
+                                          size: 11,
+                                          color: theme
+                                              .colorScheme
+                                              .onSecondaryContainer,
+                                        ),
+                                        Text(
+                                          '看MV',
+                                          style: TextStyle(
+                                            color: theme
+                                                .colorScheme
+                                                .onSecondaryContainer,
+                                            height: 1,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          strutStyle: const StrutStyle(
+                                            leading: 0,
+                                            height: 1,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SelectionText(
+                [
+                  if (!(item.originArtist ?? item.originArtistList)
+                      .isNullOrEmpty)
+                    '原唱：${item.originArtist ?? item.originArtistList}',
+                  if (!item.album.isNullOrEmpty) '专辑：${item.album}',
+                  if (!item.musicSource.isNullOrEmpty) '出处：${item.musicSource}',
+                ].join('\n'),
+              ),
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('热歌榜排名'),
+                  _buildRank(item.hotSongHeat?.lastHeat, '热度'),
+                  _buildRank(item.listenPv, '总播放量'),
+                  _buildRank(
+                    item.musicRelation,
+                    '使用稿件量',
+                    () => Get.to(
+                      const MusicRecommendPage(),
+                      arguments: (id: controller.musicId, item: item),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildChart(MusicDetail item, double maxWidth) {
+    final heat = item.hotSongHeat?.songHeat;
+    if (heat == null || heat.isEmpty) return null;
+    final colorScheme = theme.colorScheme;
+    int maxHeat = heat.first.heat;
+    int minHeat = heat.first.heat;
+    for (int i = 1; i < heat.length; i++) {
+      final h = heat[i].heat;
+      if (h > maxHeat) maxHeat = h;
+      if (h < minHeat) minHeat = h;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        spacing: 8,
+        children: [
+          Text('近${heat.length}日热度趋势', style: theme.textTheme.titleMedium),
+          SizedBox(
+            width: maxWidth,
+            height: maxWidth * 0.5,
+            child: Padding(
+              padding: const EdgeInsetsGeometry.only(top: 4, right: 22),
+              child: LineChart(
+                LineChartData(
+                  lineTouchData: const LineTouchData(enabled: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(
+                        reservedSize: 55,
+                        showTitles: true,
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30 * sqrt2,
+                        getTitlesWidget: (index, meta) {
+                          return SideTitleWidget(
+                            angle: -pi / 4,
+                            space: 8 * sqrt2,
+                            meta: meta,
+                            child: Text(
+                              DateFormatUtils.shortFormat.format(
+                                DateTime.fromMillisecondsSinceEpoch(
+                                  heat[index.toInt()].date * 1000,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: colorScheme.onSurface),
+                  ),
+                  minX: 0,
+                  maxX: (heat.length - 1).toDouble(),
+                  minY: minHeat.toDouble(),
+                  maxY: maxHeat.toDouble(),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: List.generate(
+                        heat.length,
+                        (index) => FlSpot(
+                          index.toDouble(),
+                          heat[index].heat.toDouble(),
+                        ),
+                      ),
+                      color: colorScheme.primary,
+                      barWidth: 1,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            colorScheme.primary.withValues(alpha: 0.5),
+                            colorScheme.onPrimary.withValues(alpha: 0.5),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _searchMusic(MusicDetail item) {
+    if (!Platform.isAndroid ||
+        !PiliAndroidHelper.openMusic(
+          item.musicTitle!,
+          item.originArtist ?? item.originArtistList,
+          item.album,
+        )) {
+      Utils.copyText(item.musicTitle!);
+    }
+  }
+}

@@ -1,0 +1,282 @@
+name: PiliPlus
+description: A new Flutter project.
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+# Fallback version for local/PR builds. Release builds can override this from the GitHub Action tag.
+version: 2.1.7+1
+
+environment:
+  sdk: ">=3.13.0"
+  flutter: 3.47.1
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  app_links: ^7.1.1
+  archive: ^4.0.0
+  audio_service:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/audio_service.git
+      path: audio_service
+      ref: main
+  audio_session: ^0.2.2
+  battery_plus: ^7.0.0
+  brotli: ^0.6.0
+  cached_network_image_ce:
+    git:
+      url: https://github.com/My-Responsitories/flutter_cached_network_image_ce.git
+      path: cached_network_image
+      ref: develop
+  canvas_danmaku:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/canvas_danmaku.git
+      ref: main
+  catcher_2:
+    git:
+      url: https://github.com/My-Responsitories/catcher_2.git
+      ref: dev
+  characters: ^1.4.1
+  chat_bottom_container:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_chat_packages.git
+      path: packages/chat_bottom_container
+      ref: dev
+  collection: ^1.19.1
+  connectivity_plus: ^7.1.1
+  cookie_jar: ^4.0.8
+  crypto: ^3.0.6
+  cupertino_ui: ^1.0.0
+  desktop_webview_window:
+    git:
+      url: https://github.com/Predidit/linux_webview_window
+      ref: main
+  device_info_plus: ^13.1.0
+  dio: ^5.9.1
+  dio_http2_adapter: ^2.7.1
+  dlna_dart: ^0.1.0
+  dynamic_color: ^2.1.0
+  easy_debounce: ^2.0.3
+  encrypt: ^5.0.3
+  extended_nested_scroll_view:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/extended_nested_scroll_view.git
+      ref: dev
+  ffi: ^2.2.0
+  file_picker: ^12.0.0
+  fixnum: ^1.1.1
+  fl_chart: ^1.0.0
+  flex_seed_scheme:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flex_seed_scheme.git
+      ref: dev
+  flutter_displaymode: ^0.7.0
+  flutter_html: ^3.0.0-beta.2
+  flutter_inappwebview: ^6.1.5
+  flutter_smart_dialog:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_smart_dialog.git
+      ref: main
+  flutter_sortable_wrap:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_sortable_wrap.git
+      ref: master
+  flutter_svg: ^2.0.14
+  flutter_volume_controller: ^2.0.0
+  font_awesome_flutter:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/font_awesome_flutter.git
+      ref: v10.9.0
+  get:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/getx.git
+      ref: dev
+  hive_ce: ^2.19.3
+  html: ^0.15.4
+  http2: ^2.3.1
+  image_cropper: ^12.0.0
+  image_picker: ^1.1.2
+  intl: ^0.20.2
+  jni: ^1.0.0
+  json_annotation: ^4.11.0
+  live_photo_maker: ^0.0.6
+  logger: ^2.5.0
+  material_color_utilities: ^0.13.0
+  material_design_icons_flutter:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/material_design_icons_flutter.git
+      ref: const
+  material_new_shapes: ^1.0.0
+  material_ui: ^1.0.0
+  media_kit: 1.1.11
+  media_kit_libs_video: 1.0.5
+  media_kit_video: 1.2.5
+  mime: ^2.0.0
+  native_device_orientation:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_native_device_orientation.git
+      ref: master
+  package_info_plus: ^10.1.0
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  permission_handler_android: ^14.0.0
+  permission_handler_apple: ^9.4.7
+  permission_handler_platform_interface: ^4.3.0
+  pretty_qr_code: ^3.3.0
+  protobuf: ^6.0.0
+  re_highlight: ^0.0.3
+  saver_gallery: ^5.0.2
+  screen_brightness_platform_interface: ^2.1.0
+  screen_retriever: ^0.2.0
+  share_plus: ^13.1.0
+  stream_transform: ^2.1.1
+  super_sliver_list:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/super_sliver_list.git
+      ref: mod
+  synchronized: ^3.3.0
+  tray_manager: ^0.5.1
+  url_launcher: ^6.3.1
+  uuid: ^4.5.1
+  vector_math: ^2.2.0
+  wakelock_plus: ^1.2.8
+  waterfall_flow: ^3.1.0
+  web_socket_channel: ^3.0.3
+  webdav_client:
+    git:
+      url: https://github.com/wgh136/webdav_client.git
+      ref: main
+  win32: ^6.3.0
+  window_manager:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/window_manager.git
+      path: packages/window_manager
+      ref: main
+
+dependency_overrides:
+  flutter_inappwebview_android:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_inappwebview.git
+      path: flutter_inappwebview_android
+      ref: v6.1.5
+  flutter_inappwebview_windows:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/flutter_inappwebview.git
+      path: flutter_inappwebview_windows
+      ref: v6.1.5
+  media_kit:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: media_kit
+      ref: version_1.2.5
+  media_kit_libs_android_video:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: libs/android/media_kit_libs_android_video
+      ref: version_1.2.5
+  media_kit_libs_ios_video:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: libs/ios/media_kit_libs_ios_video
+      ref: version_1.2.5
+  media_kit_libs_video:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: libs/universal/media_kit_libs_video
+      ref: version_1.2.5
+  media_kit_libs_windows_video:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: libs/windows/media_kit_libs_windows_video
+      ref: version_1.2.5
+  media_kit_native_event_loop:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: media_kit_native_event_loop
+      ref: version_1.2.5
+  media_kit_video:
+    git:
+      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      path: media_kit_video
+      ref: version_1.2.5
+  cached_network_image_ce:
+    git:
+      url: https://github.com/My-Responsitories/flutter_cached_network_image_ce.git
+      path: cached_network_image
+      ref: develop
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.10.3
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+  flutter_native_splash: ^2.4.6
+  jnigen: ^0.17.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/images/logo/logo_2.png
+  image_path_android: assets/images/logo/logo_2.png
+  image_path_ios: assets/images/logo/logo.png
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: assets/images/logo/logo_2.png
+  adaptive_icon_monochrome: assets/images/logo/logo_2.png
+  macos:
+    generate: true
+    image_path: assets/images/logo/logo.png
+
+flutter_native_splash:
+  android_12:
+    color: "#ffffff"
+    color_dark: "#212121"
+  color: "#ffffff"
+  color_dark: "#212121"
+  image: assets/images/logo/logo_2.png
+  image_dark: assets/images/logo/logo_2.png
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - path: assets/images/
+    - path: assets/images/logo/
+    - path: assets/images/logo/ico/
+      platforms: [windows]
+    - path: assets/images/logo/desktop/
+      platforms: [linux, macos]
+    - path: assets/images/live/
+    - path: assets/images/paycoins/
+    - path: assets/shaders/
+
+  fonts:
+    - family: digital_id_num
+      fonts:
+        - asset: assets/fonts/digital_id_num.ttf
+    - family: custom_icon
+      fonts:
+        - asset: assets/fonts/custom_icon.ttf
