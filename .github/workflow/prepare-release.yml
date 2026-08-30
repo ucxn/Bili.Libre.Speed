@@ -1,0 +1,55 @@
+name: 准备发布
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: 准备发布
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout upStream
+        uses: actions/checkout@v7
+        with:
+          ref: upStream
+          fetch-depth: 0
+
+      - name: 获取候选版本
+        shell: bash
+        run: |
+          git clone --depth 1 --branch dev \
+            https://github.com/1-Reality/BiliVideo-Lab.git \
+            "${RUNNER_TEMP}/release-candidate"
+          echo "SOURCE_SHA=$(git -C "${RUNNER_TEMP}/release-candidate" rev-parse HEAD)" >> "${GITHUB_ENV}"
+
+      - name: 镜像候选版本
+        shell: bash
+        run: |
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='README.md' \
+            --exclude='.github/workflows/' \
+            "${RUNNER_TEMP}/release-candidate/" ./
+
+      - name: 提交到 upStream
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要准备的新内容。"
+            echo "Source: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          git commit -m "prepare: release candidate @ ${SOURCE_SHA:0:12}"
+          git push origin HEAD:upStream
+
+          echo "Prepared from: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Preserved: README.md and .github/workflows/" >> "${GITHUB_STEP_SUMMARY}"
