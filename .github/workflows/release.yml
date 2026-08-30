@@ -160,7 +160,6 @@ jobs:
       - name: Upload Android
         uses: actions/upload-artifact@v7
         with:
-          archive: false
           name: release-android
           path: PiliBro_android_*.apk
           if-no-files-found: error
@@ -202,7 +201,6 @@ jobs:
       - name: Upload iOS
         uses: actions/upload-artifact@v7
         with:
-          archive: false
           name: release-ios
           path: PiliBro_ios_*.ipa
           if-no-files-found: error
@@ -247,7 +245,6 @@ jobs:
       - name: Upload macOS
         uses: actions/upload-artifact@v7
         with:
-          archive: false
           name: release-macos
           path: PiliBro_macos_*.dmg
           if-no-files-found: error
@@ -338,7 +335,7 @@ jobs:
           Requires:       desktop-file-utils, hicolor-icon-theme
 
           %description
-          使用 Flutter 开发的 BiliBili 第三方客户端
+          使用 Flutter 开发的B站第三方客户端
 
           %prep
           %setup -q -n pilibro-${{ env.version }}
@@ -404,7 +401,6 @@ jobs:
       - name: Upload Linux
         uses: actions/upload-artifact@v7
         with:
-          archive: false
           name: release-linux
           path: |
             PiliBro_linux_*.tar.gz
@@ -475,7 +471,6 @@ jobs:
       - name: Upload Windows
         uses: actions/upload-artifact@v7
         with:
-          archive: false
           name: release-windows
           path: |
             PiliBro_windows_*_x64_portable.zip
