@@ -1,19 +1,21 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:PiliPlus/common/widgets/selection_text.dart';
-import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
+import 'package:PiliBro/common/widgets/selection_text.dart';
+import 'package:PiliBro/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/reply.dart';
-import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
-import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/accounts/account.dart';
-import 'package:PiliPlus/utils/android/android_helper.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
-import 'package:PiliPlus/utils/extension/theme_ext.dart';
-import 'package:PiliPlus/utils/id_utils.dart';
-import 'package:PiliPlus/utils/theme_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliBro/http/loading_state.dart';
+import 'package:PiliBro/http/reply.dart';
+import 'package:PiliBro/models/common/reply/reply_sort_type.dart';
+import 'package:PiliBro/services/comment_helper_service.dart';
+import 'package:PiliBro/utils/accounts.dart';
+import 'package:PiliBro/utils/accounts/account.dart';
+import 'package:PiliBro/utils/android/android_helper.dart';
+import 'package:PiliBro/utils/extension/iterable_ext.dart';
+import 'package:PiliBro/utils/extension/theme_ext.dart';
+import 'package:PiliBro/utils/id_utils.dart';
+import 'package:PiliBro/utils/theme_utils.dart';
+import 'package:PiliBro/utils/utils.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -27,7 +29,47 @@ abstract final class ReplyUtils {
     required bool isManual,
   }) {
     try {
-      _checkReply(
+      Future<void> recordHidden(String reason) =>
+          CommentHelperService.recordHidden(
+            oid: replyInfo.oid.toInt(),
+            type: replyInfo.type.toInt(),
+            rpid: replyInfo.id.toInt(),
+            root: replyInfo.root.toInt(),
+            parent: replyInfo.parent.toInt(),
+            sentAtSeconds: replyInfo.ctime.toInt(),
+            authorUid: replyInfo.mid.toInt(),
+            message: replyInfo.content.message,
+            pictures: replyInfo.content.pictures
+                .map((item) => item.toProto3Json())
+                .toList(),
+            sourceId: sourceId,
+            reason: reason,
+          );
+
+      final useAndroidActivity = Platform.isAndroid && biliSendCommAntifraud;
+      if (!isManual && useAndroidActivity) {
+        unawaited(
+          _checkReply(
+            oid: replyInfo.oid.toInt(),
+            type: replyInfo.type.toInt(),
+            id: replyInfo.id.toInt(),
+            message: replyInfo.content.message,
+            root: replyInfo.root.toInt(),
+            parent: replyInfo.parent.toInt(),
+            ctime: replyInfo.ctime.toInt(),
+            pictures: replyInfo.content.pictures
+                .map((item) => item.toProto3Json())
+                .toList(),
+            mid: replyInfo.mid.toInt(),
+            isManual: false,
+            biliSendCommAntifraud: false,
+            sourceId: sourceId,
+            silent: true,
+            onHidden: recordHidden,
+          ),
+        );
+      }
+      unawaited(_checkReply(
         oid: replyInfo.oid.toInt(),
         type: replyInfo.type.toInt(),
         id: replyInfo.id.toInt(),
@@ -44,7 +86,8 @@ abstract final class ReplyUtils {
         isManual: isManual,
         biliSendCommAntifraud: biliSendCommAntifraud,
         sourceId: sourceId,
-      );
+        onHidden: isManual || useAndroidActivity ? null : recordHidden,
+      ));
     } catch (e) {
       SmartDialog.showToast(e.toString());
     }
@@ -64,6 +107,8 @@ abstract final class ReplyUtils {
     bool isManual = false,
     required bool biliSendCommAntifraud,
     required sourceId,
+    bool silent = false,
+    Future<void> Function(String reason)? onHidden,
   }) async {
     // biliSendCommAntifraud
     if (Platform.isAndroid && biliSendCommAntifraud) {
@@ -97,7 +142,13 @@ abstract final class ReplyUtils {
     if (!isManual) {
       await Future.delayed(const Duration(seconds: 8));
     }
+    var hiddenRecorded = false;
     void showReplyCheckResult(String message, {bool isBan = false}) {
+      if (isBan && !hiddenRecorded && onHidden != null) {
+        hiddenRecorded = true;
+        unawaited(onHidden(message));
+      }
+      if (silent) return;
       showDialog(
         context: Get.context!,
         barrierDismissible: isManual,
@@ -183,7 +234,7 @@ abstract final class ReplyUtils {
       );
 
       if (res case Error(:final errMsg)) {
-        SmartDialog.showToast('获取评论主列表时发生错误：$errMsg');
+        if (!silent) SmartDialog.showToast('获取评论主列表时发生错误：$errMsg');
         return;
       } else if (res case Success(:final response)) {
         final index =

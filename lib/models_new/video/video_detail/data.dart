@@ -1,18 +1,20 @@
-import 'package:PiliPlus/models/model_owner.dart';
-import 'package:PiliPlus/models_new/video/video_detail/argue_info.dart';
-import 'package:PiliPlus/models_new/video/video_detail/desc_v2.dart';
-import 'package:PiliPlus/models_new/video/video_detail/dimension.dart';
-import 'package:PiliPlus/models_new/video/video_detail/page.dart';
-import 'package:PiliPlus/models_new/video/video_detail/rights.dart';
-import 'package:PiliPlus/models_new/video/video_detail/staff.dart';
-import 'package:PiliPlus/models_new/video/video_detail/stat.dart';
-import 'package:PiliPlus/models_new/video/video_detail/ugc_season.dart';
-import 'package:PiliPlus/utils/parse_string.dart';
+import 'package:PiliBro/models/model_owner.dart';
+import 'package:PiliBro/models_new/video/video_detail/argue_info.dart';
+import 'package:PiliBro/models_new/video/video_detail/desc_v2.dart';
+import 'package:PiliBro/models_new/video/video_detail/dimension.dart';
+import 'package:PiliBro/models_new/video/video_detail/page.dart';
+import 'package:PiliBro/models_new/video/video_detail/rights.dart';
+import 'package:PiliBro/models_new/video/video_detail/staff.dart';
+import 'package:PiliBro/models_new/video/video_detail/stat.dart';
+import 'package:PiliBro/models_new/video/video_detail/ugc_season.dart';
+import 'package:PiliBro/utils/parse_string.dart';
 
 class VideoDetailData {
   String? bvid;
   int? aid;
   int? videos;
+  int? tid;
+  String? tname;
   int? copyright;
   String? pic;
   String? title;
@@ -39,6 +41,8 @@ class VideoDetailData {
     this.bvid,
     this.aid,
     this.videos,
+    this.tid,
+    this.tname,
     this.copyright,
     this.pic,
     this.title,
@@ -66,6 +70,8 @@ class VideoDetailData {
         bvid: json['bvid'] as String?,
         aid: json['aid'] as int?,
         videos: json['videos'] as int?,
+        tid: json['tid'] as int?,
+        tname: json['tname'] as String?,
         copyright: json['copyright'] as int?,
         pic: json['pic'] as String?,
         title: json['title'] as String?,

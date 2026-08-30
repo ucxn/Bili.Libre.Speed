@@ -1,4 +1,4 @@
-import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliBro/utils/storage.dart';
 
 typedef CdnDiagnosticGroup = ({
   int runStartedAtUs,
@@ -7,37 +7,49 @@ typedef CdnDiagnosticGroup = ({
 });
 
 abstract final class CdnDiagnosticsService {
-  static const _prefix = 'cdnDiagnostic:';
-  static int _sequence = 0;
+  static int? _activeRun;
+  static final List<Map<String, dynamic>> _activeRecords = [];
+  static Future<void> _writeChain = Future.value();
 
-  static Future<void> append(Map<String, dynamic> record) async {
-    final now = DateTime.now().microsecondsSinceEpoch;
-    final id = '$_prefix$now:${_sequence++}';
-    try {
-      await GStorage.appendCdnDiagnostic((id: id, record: record));
-    } catch (_) {
-      // 诊断记录失败绝不能反过来影响测速本身。
+  static void append(Map<String, dynamic> record) {
+    final run = (record['testRunStartedAtUs'] as num?)?.toInt() ??
+        DateTime.now().microsecondsSinceEpoch;
+    if (_activeRun != run) {
+      _activeRun = run;
+      _activeRecords.clear();
     }
+    final cdn = record['cdn'] is Map ? record['cdn'] as Map : const {};
+    final index = cdn['index'];
+    _activeRecords.removeWhere((item) {
+      final old = item['cdn'];
+      return old is Map && old['index'] == index;
+    });
+    _activeRecords.add(record);
+  }
+
+  static Future<void> flushLatest() {
+    if (_activeRecords.isEmpty) return _writeChain;
+    return _enqueue(() =>
+        GStorage.replaceCdnDiagnostics([
+          for (final item in _activeRecords)
+            (id: item['recordedAtUs']?.toString() ?? '', record: item),
+        ]));
+  }
+
+  static Future<void> _enqueue(Future<void> Function() action) {
+    Future<void> run(dynamic _) async {
+      try {
+        await action();
+      } catch (_) {
+        // 诊断记录失败绝不能反过来影响测速本身。
+      }
+    }
+    _writeChain = _writeChain.then(run, onError: run);
+    return _writeChain;
   }
 
   static List<({String id, Map<String, dynamic> record})> _allEntries() {
-    final merged = <String, Map<String, dynamic>>{
-      for (final entry in GStorage.readCdnDiagnosticsSync())
-        entry.id: entry.record,
-    };
-    for (final key in GStorage.video.keys) {
-      if (key is! String || !key.startsWith(_prefix)) continue;
-      final raw = GStorage.video.get(key);
-      if (raw is Map) {
-        merged[key] = raw.map(
-          (key, value) => MapEntry(key.toString(), value),
-        );
-      }
-    }
-    return [
-      for (final entry in merged.entries)
-        (id: entry.key, record: entry.value),
-    ];
+    return GStorage.readCdnDiagnosticsSync();
   }
 
   static List<Map<String, dynamic>> snapshot() {
@@ -74,29 +86,28 @@ abstract final class CdnDiagnosticsService {
     return groups;
   }
 
-  static Future<void> deleteRuns(Set<int> runStartedAtUs) async {
+  static Future<void> deleteRuns(Set<int> runStartedAtUs) => _enqueue(() async {
     if (runStartedAtUs.isEmpty) return;
 
     final keep = <({String id, Map<String, dynamic> record})>[];
-    final legacyKeys = <dynamic>[];
-
     for (final entry in _allEntries()) {
       final value = entry.record;
       final run = (value['testRunStartedAtUs'] as num?)?.toInt() ??
           (value['recordedAtUs'] as num?)?.toInt() ??
           0;
-      if (runStartedAtUs.contains(run)) {
-        if (GStorage.video.containsKey(entry.id)) {
-          legacyKeys.add(entry.id);
-        }
-      } else {
-        keep.add(entry);
-      }
+      if (!runStartedAtUs.contains(run)) keep.add(entry);
     }
 
     await GStorage.replaceCdnDiagnostics(keep);
-    if (legacyKeys.isNotEmpty) {
-      await GStorage.video.deleteAll(legacyKeys);
+    if (keep.isEmpty) {
+      _activeRun = null;
+      _activeRecords.clear();
     }
-  }
+  });
+
+  static Future<void> clearLatest() => _enqueue(() async {
+      _activeRun = null;
+      _activeRecords.clear();
+      await GStorage.replaceCdnDiagnostics(const []);
+    });
 }

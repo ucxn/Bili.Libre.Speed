@@ -1,19 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:PiliPlus/models/model_owner.dart';
-import 'package:PiliPlus/models/user/danmaku_rule_adapter.dart';
-import 'package:PiliPlus/models/user/info.dart';
-import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/accounts/account_adapter.dart';
-import 'package:PiliPlus/utils/accounts/account_type_adapter.dart';
-import 'package:PiliPlus/utils/accounts/cookie_jar_adapter.dart';
-import 'package:PiliPlus/utils/path_utils.dart';
-import 'package:PiliPlus/utils/set_int_adapter.dart';
-import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliBro/models/model_owner.dart';
+import 'package:PiliBro/models/user/danmaku_rule_adapter.dart';
+import 'package:PiliBro/models/user/info.dart';
+import 'package:PiliBro/utils/accounts.dart';
+import 'package:PiliBro/utils/accounts/account_adapter.dart';
+import 'package:PiliBro/utils/accounts/account_type_adapter.dart';
+import 'package:PiliBro/utils/accounts/cookie_jar_adapter.dart';
+import 'package:PiliBro/utils/path_utils.dart';
+import 'package:PiliBro/utils/set_int_adapter.dart';
+import 'package:PiliBro/utils/storage_key.dart';
+import 'package:PiliBro/utils/storage_pref.dart';
+import 'package:PiliBro/utils/utils.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:path/path.dart' as path;
 
@@ -23,11 +24,24 @@ abstract final class GStorage {
   static late final Box<dynamic> localCache;
   static late final Box<dynamic> setting;
   static late final Box<dynamic> video;
+  static Box<dynamic>? _playbackStats;
+  static Future<void>? _playbackStatsInitFuture;
+  static Box<dynamic> get playbackStats => _playbackStats!;
+  static bool get playbackStatsReady => _playbackStats != null;
+  static late Box<dynamic> commentHelper;
   static late final Box<int> watchProgress;
-  static late final Box<Uint8List>? reply;
+  static Box<Uint8List>? reply;
 
-  static const _heavyTelemetryMigrationKey = 'heavyTelemetryExternalV1';
+  static const _heavyTelemetryMigrationKey = 'heavyTelemetryExternalV2';
+  static const _nextPlaybackStatsCompactAtMs =
+      'nextPlaybackStatsCompactAtMs';
   static const _cdnDiagnosticPrefix = 'cdnDiagnostic:';
+  static int? _startupBrandProfileMid;
+
+  static String get startupRoute => switch (_startupBrandProfileMid) {
+    final mid? => '/member?mid=$mid',
+    null => '/',
+  };
 
   static File get playbackStatsFile =>
       File(path.join(appSupportDirPath, 'playback_stats.json'));
@@ -36,7 +50,26 @@ abstract final class GStorage {
       File(path.join(appSupportDirPath, 'traffic_stats.json'));
 
   static File get cdnDiagnosticsFile =>
+      File(path.join(appSupportDirPath, 'cdn_diagnostic_latest.json'));
+
+  static File get legacyCdnDiagnosticsFile =>
       File(path.join(appSupportDirPath, 'cdn_diagnostics.jsonl'));
+
+  static File get playbackStatsHiveFile =>
+      File(
+        _playbackStats?.path ??
+            path.join(appSupportDirPath, 'hive', 'playbackStats.hive'),
+      );
+
+  static File get commentHelperHiveFile =>
+      File(
+        commentHelper.path ??
+            path.join(appSupportDirPath, 'hive', 'commentHelper.hive'),
+      );
+
+  static File get replyHiveFile => File(
+        reply?.path ?? path.join(appSupportDirPath, 'hive', 'reply.hive'),
+      );
 
   static Map<String, dynamic>? readJsonMapSync(File file) {
     if (!file.existsSync()) return null;
@@ -62,28 +95,34 @@ abstract final class GStorage {
 
   static List<({String id, Map<String, dynamic> record})>
   readCdnDiagnosticsSync() {
+    if (legacyCdnDiagnosticsFile.existsSync()) {
+      unawaited(_deleteFileIfExists(legacyCdnDiagnosticsFile));
+    }
     if (!cdnDiagnosticsFile.existsSync()) return const [];
+    // A latest-result snapshot is intentionally tiny. Anything large is an
+    // obsolete per-chunk history and must never be synchronously decoded.
+    if (cdnDiagnosticsFile.lengthSync() > 8 * 1024 * 1024) {
+      unawaited(_deleteFileIfExists(cdnDiagnosticsFile));
+      return const [];
+    }
     final result = <({String id, Map<String, dynamic> record})>[];
     try {
-      for (final line in cdnDiagnosticsFile.readAsLinesSync()) {
-        if (line.trim().isEmpty) continue;
-        try {
-          final decoded = jsonDecode(line);
-          if (decoded is! Map) continue;
-          final id = decoded['id']?.toString();
-          final raw = decoded['record'];
-          if (id == null || raw is! Map) continue;
-          result.add((
-            id: id,
-            record: raw.map(
-              (key, value) => MapEntry(key.toString(), value),
-            ),
-          ));
-        } catch (_) {
-          // One damaged diagnostic line must not hide the rest of the history.
-        }
+      final decoded = jsonDecode(cdnDiagnosticsFile.readAsStringSync());
+      if (decoded is! Map || decoded['schemaVersion'] != 3) {
+        unawaited(_deleteFileIfExists(cdnDiagnosticsFile));
+        return const [];
       }
-    } catch (_) {}
+      for (final raw in (decoded['records'] as List? ?? const [])) {
+        if (raw is! Map) continue;
+        final record = raw.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        final id = '${record['testRunStartedAtUs']}:${record['cdn'] is Map ? (record['cdn'] as Map)['index'] : result.length}';
+        result.add((id: id, record: record));
+      }
+    } catch (_) {
+      unawaited(_deleteFileIfExists(cdnDiagnosticsFile));
+    }
     return result;
   }
 
@@ -94,45 +133,41 @@ abstract final class GStorage {
       await _deleteFileIfExists(cdnDiagnosticsFile);
       return;
     }
-    await cdnDiagnosticsFile.parent.create(recursive: true);
-    final sink = cdnDiagnosticsFile.openWrite(mode: FileMode.write);
-    try {
-      for (final entry in entries) {
-        sink.writeln(jsonEncode({'id': entry.id, 'record': entry.record}));
-      }
-      await sink.flush();
-    } finally {
-      await sink.close();
+    // A file is a latest-run snapshot, never an archive. This also collapses
+    // old imported JSON that predates the one-run rule before it can grow here.
+    var latestRun = 0;
+    for (final entry in entries) {
+      final record = entry.record;
+      final run = (record['testRunStartedAtUs'] as num?)?.toInt() ??
+          (record['recordedAtUs'] as num?)?.toInt() ??
+          0;
+      if (run > latestRun) latestRun = run;
     }
+    final latest = [
+      for (final entry in entries)
+        if (((entry.record['testRunStartedAtUs'] as num?)?.toInt() ??
+                (entry.record['recordedAtUs'] as num?)?.toInt() ??
+                0) ==
+            latestRun)
+          entry.record,
+    ];
+    await cdnDiagnosticsFile.parent.create(recursive: true);
+    final temp = File('${cdnDiagnosticsFile.path}.tmp');
+    await temp.writeAsString(
+      jsonEncode({
+        'schemaVersion': 3,
+        'records': latest,
+      }),
+      flush: true,
+    );
+    if (await cdnDiagnosticsFile.exists()) await cdnDiagnosticsFile.delete();
+    await temp.rename(cdnDiagnosticsFile.path);
   }
 
   static Future<void> appendCdnDiagnostic(
     ({String id, Map<String, dynamic> record}) entry,
   ) async {
-    await cdnDiagnosticsFile.parent.create(recursive: true);
-    await cdnDiagnosticsFile.writeAsString(
-      '${jsonEncode({'id': entry.id, 'record': entry.record})}\n',
-      mode: FileMode.append,
-      flush: true,
-    );
-  }
-
-  static List<({String id, Map<String, dynamic> record})>
-  _legacyCdnDiagnostics() {
-    final result = <({String id, Map<String, dynamic> record})>[];
-    for (final key in video.keys) {
-      if (key is! String || !key.startsWith(_cdnDiagnosticPrefix)) continue;
-      final raw = video.get(key);
-      if (raw is Map) {
-        result.add((
-          id: key,
-          record: raw.map(
-            (key, value) => MapEntry(key.toString(), value),
-          ),
-        ));
-      }
-    }
-    return result;
+    await replaceCdnDiagnostics([entry]);
   }
 
   static Future<void> migrateHeavyTelemetryFromVideoBox() async {
@@ -143,14 +178,6 @@ abstract final class GStorage {
 
     final keysToDelete = <dynamic>[];
 
-    final legacyPlayback = video.get(VideoBoxKey.playbackStats);
-    if (legacyPlayback is Map) {
-      if (!playbackStatsFile.existsSync()) {
-        await writeJsonFile(playbackStatsFile, legacyPlayback);
-      }
-      keysToDelete.add(VideoBoxKey.playbackStats);
-    }
-
     final legacyTraffic = video.get(VideoBoxKey.trafficStats);
     if (legacyTraffic is Map) {
       if (!trafficStatsFile.existsSync()) {
@@ -159,22 +186,15 @@ abstract final class GStorage {
       keysToDelete.add(VideoBoxKey.trafficStats);
     }
 
-    final legacyDiagnostics = _legacyCdnDiagnostics();
-    if (legacyDiagnostics.isNotEmpty) {
-      final merged = <String, Map<String, dynamic>>{
-        for (final entry in readCdnDiagnosticsSync())
-          entry.id: entry.record,
-        for (final entry in legacyDiagnostics)
-          entry.id: entry.record,
-      };
-      await replaceCdnDiagnostics([
-        for (final entry in merged.entries)
-          (id: entry.key, record: entry.value),
-      ]);
-      keysToDelete.addAll(
-        legacyDiagnostics.map((entry) => entry.id),
-      );
-    }
+    // Historical CDN records intentionally have no migration path: their
+    // per-chunk arrays are the old storage bug. Delete keys by name without
+    // decoding their values.
+    keysToDelete.addAll(
+      video.keys.where(
+        (key) => key is String && key.startsWith(_cdnDiagnosticPrefix),
+      ),
+    );
+    unawaited(_deleteFileIfExists(legacyCdnDiagnosticsFile));
 
     if (keysToDelete.isNotEmpty) {
       await video.deleteAll(keysToDelete);
@@ -217,6 +237,7 @@ abstract final class GStorage {
       ).then((res) => historyWord = res),
       // 视频设置
       Hive.openBox('video').then((res) => video = res),
+      Hive.openBox('commentHelper').then((res) => commentHelper = res),
       Accounts.init(),
       Hive.openBox<int>(
         'watchProgress',
@@ -226,6 +247,8 @@ abstract final class GStorage {
         },
       ).then((res) => watchProgress = res),
     ]);
+
+    await _runPlaybackMaintenanceIfDue();
 
     if (Pref.saveReply) {
       reply = await Hive.openBox<Uint8List>(
@@ -238,6 +261,59 @@ abstract final class GStorage {
     } else {
       reply = null;
     }
+  }
+
+  static Future<void> initializePlaybackStats() =>
+      _playbackStatsInitFuture ??= _initializePlaybackStats();
+
+  static Future<void> _initializePlaybackStats() async {
+    _playbackStats = await Hive.openBox('playbackStats');
+    if (playbackStats.isEmpty) {
+      final legacyBox = video.get(VideoBoxKey.playbackStats);
+      final legacy = readJsonMapSync(playbackStatsFile) ??
+          (legacyBox is Map
+              ? legacyBox.map(
+                  (key, value) => MapEntry(key.toString(), value),
+                )
+              : null);
+      if (legacy != null && legacy.isNotEmpty) {
+        await playbackStats.putAll(legacy);
+      }
+    }
+    if (video.containsKey(VideoBoxKey.playbackStats)) {
+      await video.delete(VideoBoxKey.playbackStats);
+    }
+    await _deleteFileIfExists(playbackStatsFile);
+  }
+
+  static Future<void> _runPlaybackMaintenanceIfDue() async {
+    final now = DateTime.now();
+    final due = localCache.get(
+      _nextPlaybackStatsCompactAtMs,
+      defaultValue: 0,
+    );
+    if (due is! num || now.millisecondsSinceEpoch < due.toInt()) return;
+
+    // This deliberately runs before the first home frame. Compaction is rare,
+    // while opening a bloated hot store on every launch is expensive.
+    await initializePlaybackStats();
+    await playbackStats.compact();
+    await localCache.put(
+      _nextPlaybackStatsCompactAtMs,
+      _nextPlaybackMaintenanceAt(now).millisecondsSinceEpoch,
+    );
+    _startupBrandProfileMid = DateTime.now().millisecondsSinceEpoch.isOdd
+        ? 501430041
+        : 1225047446;
+  }
+
+  static DateTime _nextPlaybackMaintenanceAt(DateTime now) {
+    for (final day in const [8, 18, 28]) {
+      final candidate = DateTime(now.year, now.month, day);
+      if (candidate.isAfter(now)) return candidate;
+    }
+    final nextMonth = DateTime(now.year, now.month + 1);
+    return DateTime(nextMonth.year, nextMonth.month, 8);
   }
 
   static String exportAllSettings({
@@ -253,16 +329,8 @@ abstract final class GStorage {
       );
 
     if (includePlaybackStats) {
-      final legacyPlayback = video.get(VideoBoxKey.playbackStats);
-      final playback =
-          readJsonMapSync(playbackStatsFile) ??
-          (legacyPlayback is Map
-              ? legacyPlayback.map(
-                  (key, value) => MapEntry(key.toString(), value),
-                )
-              : null);
-      if (playback != null) {
-        videoData[VideoBoxKey.playbackStats] = playback;
+      if (playbackStatsReady && playbackStats.isNotEmpty) {
+        videoData[VideoBoxKey.playbackStats] = playbackStats.toMap();
       }
     }
 
@@ -280,8 +348,6 @@ abstract final class GStorage {
 
     if (includeCdnDiagnostics) {
       final diagnostics = <String, Map<String, dynamic>>{
-        for (final entry in _legacyCdnDiagnostics())
-          entry.id: entry.record,
         for (final entry in readCdnDiagnosticsSync())
           entry.id: entry.record,
       };
@@ -304,30 +370,12 @@ abstract final class GStorage {
   static Future<List<void>> importAllJsonSettings(
     Map<String, dynamic> map,
   ) async {
+    await initializePlaybackStats();
     final meta = map['backupMeta'];
     final keepPlayback =
         meta is Map && meta['includePlaybackStats'] == false;
     final keepDiagnostics =
         meta is Map && meta['includeCdnDiagnostics'] == false;
-
-    final legacyPlayback = video.get(VideoBoxKey.playbackStats);
-    final preservedPlayback = keepPlayback
-        ? readJsonMapSync(playbackStatsFile) ??
-              (legacyPlayback is Map
-                  ? legacyPlayback.map(
-                      (key, value) => MapEntry(key.toString(), value),
-                    )
-                  : null)
-        : null;
-
-    final preservedDiagnostics = keepDiagnostics
-        ? <String, Map<String, dynamic>>{
-            for (final entry in _legacyCdnDiagnostics())
-              entry.id: entry.record,
-            for (final entry in readCdnDiagnosticsSync())
-              entry.id: entry.record,
-          }
-        : const <String, Map<String, dynamic>>{};
 
     final importedSettings = Map<dynamic, dynamic>.from(
       map[setting.name] as Map? ?? const {},
@@ -355,11 +403,13 @@ abstract final class GStorage {
       setting.clear().then<void>((_) => setting.putAll(importedSettings)),
       video.clear().then<void>((_) => video.putAll(importedVideo)),
       if (!keepPlayback)
-        importedPlayback is Map
-            ? writeJsonFile(playbackStatsFile, importedPlayback)
-            : _deleteFileIfExists(playbackStatsFile)
-      else if (preservedPlayback != null && !playbackStatsFile.existsSync())
-        writeJsonFile(playbackStatsFile, preservedPlayback),
+        playbackStats.clear().then<void>(
+          (_) async {
+            if (importedPlayback is Map) {
+              await playbackStats.putAll(importedPlayback);
+            }
+          },
+        ),
       importedTraffic is Map
           ? writeJsonFile(trafficStatsFile, importedTraffic)
           : _deleteFileIfExists(trafficStatsFile),
@@ -367,15 +417,96 @@ abstract final class GStorage {
         replaceCdnDiagnostics([
           for (final entry in importedDiagnostics.entries)
             (id: entry.key, record: entry.value),
-        ])
-      else if (preservedDiagnostics.isNotEmpty)
-        replaceCdnDiagnostics([
-          for (final entry in preservedDiagnostics.entries)
-            (id: entry.key, record: entry.value),
         ]),
     ]);
 
     return const <void>[];
+  }
+
+  static Future<void> restorePlaybackStatsHive(File source) async {
+    await initializePlaybackStats();
+    final target = playbackStatsHiveFile;
+    await playbackStats.flush();
+    await playbackStats.close();
+    try {
+      await _replaceHiveFile(source, target);
+      _playbackStats = await Hive.openBox('playbackStats');
+    } catch (_) {
+      await _rollbackHiveFile(target);
+      _playbackStats = await Hive.openBox('playbackStats');
+      rethrow;
+    }
+    try {
+      await _deleteFileIfExists(File('${target.path}.webdav-previous'));
+    } catch (_) {}
+  }
+
+  static Future<void> restoreCommentHelperHive(File source) async {
+    final target = commentHelperHiveFile;
+    await commentHelper.flush();
+    await commentHelper.close();
+    try {
+      await _replaceHiveFile(source, target);
+      commentHelper = await Hive.openBox('commentHelper');
+    } catch (_) {
+      await _rollbackHiveFile(target);
+      commentHelper = await Hive.openBox('commentHelper');
+      rethrow;
+    }
+    try {
+      await _deleteFileIfExists(File('${target.path}.webdav-previous'));
+    } catch (_) {}
+  }
+
+  static Future<void> restoreReplyHive(File source) async {
+    final target = replyHiveFile;
+    await reply?.flush();
+    await reply?.close();
+    reply = null;
+    try {
+      await _replaceHiveFile(source, target);
+      final restored = await Hive.openBox<Uint8List>(
+        'reply',
+        keyComparator: _intStrDescKeyComparator,
+        compactionStrategy: (entries, deletedEntries) {
+          return deletedEntries > 10;
+        },
+      );
+      if (Pref.saveReply) {
+        reply = restored;
+      } else {
+        await restored.close();
+      }
+    } catch (_) {
+      await _rollbackHiveFile(target);
+      if (Pref.saveReply) {
+        reply = await Hive.openBox<Uint8List>(
+          'reply',
+          keyComparator: _intStrDescKeyComparator,
+          compactionStrategy: (entries, deletedEntries) {
+            return deletedEntries > 10;
+          },
+        );
+      }
+      rethrow;
+    }
+    try {
+      await _deleteFileIfExists(File('${target.path}.webdav-previous'));
+    } catch (_) {}
+  }
+
+  static Future<void> _replaceHiveFile(File source, File target) async {
+    await target.parent.create(recursive: true);
+    final previous = File('${target.path}.webdav-previous');
+    await _deleteFileIfExists(previous);
+    if (await target.exists()) await target.rename(previous.path);
+    await source.copy(target.path);
+  }
+
+  static Future<void> _rollbackHiveFile(File target) async {
+    final previous = File('${target.path}.webdav-previous');
+    await _deleteFileIfExists(target);
+    if (await previous.exists()) await previous.rename(target.path);
   }
 
   static void regAdapter() {
@@ -390,19 +521,6 @@ abstract final class GStorage {
       ..registerAdapter(RuleFilterAdapter());
   }
 
-  static Future<List<void>> compact() {
-    return Future.wait([
-      userInfo.compact(),
-      historyWord.compact(),
-      localCache.compact(),
-      setting.compact(),
-      video.compact(),
-      Accounts.account.compact(),
-      watchProgress.compact(),
-      ?reply?.compact(),
-    ]);
-  }
-
   static Future<List<void>> close() {
     return Future.wait([
       userInfo.close(),
@@ -410,6 +528,8 @@ abstract final class GStorage {
       localCache.close(),
       setting.close(),
       video.close(),
+      if (_playbackStats case final box?) box.close(),
+      commentHelper.close(),
       Accounts.account.close(),
       watchProgress.close(),
       ?reply?.close(),
@@ -426,7 +546,8 @@ abstract final class GStorage {
       Accounts.clear(),
       watchProgress.clear(),
       ?reply?.clear(),
-      _deleteFileIfExists(playbackStatsFile),
+      if (_playbackStats case final box?) box.clear(),
+      commentHelper.clear(),
       _deleteFileIfExists(trafficStatsFile),
       _deleteFileIfExists(cdnDiagnosticsFile),
     ]);
