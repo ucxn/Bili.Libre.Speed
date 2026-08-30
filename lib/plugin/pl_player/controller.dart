@@ -4,54 +4,54 @@ import 'dart:io' show Platform;
 import 'dart:math' show max, min;
 import 'dart:ui' as ui;
 
-import 'package:PiliPlus/common/assets.dart';
-import 'package:PiliPlus/http/browser_ua.dart';
-import 'package:PiliPlus/http/constants.dart';
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/video.dart';
-import 'package:PiliPlus/models/common/account_type.dart';
-import 'package:PiliPlus/models/common/audio_normalization.dart';
-import 'package:PiliPlus/models/common/network_profile.dart';
-import 'package:PiliPlus/models/common/super_resolution_type.dart';
-import 'package:PiliPlus/models/common/video/video_decode_type.dart';
-import 'package:PiliPlus/models/common/video/video_type.dart';
-import 'package:PiliPlus/models/user/danmaku_rule.dart';
-import 'package:PiliPlus/models/video/play/url.dart';
-import 'package:PiliPlus/models_new/video/video_shot/data.dart';
-import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
-import 'package:PiliPlus/pages/setting/models/play_settings.dart'
+import 'package:PiliBro/common/assets.dart';
+import 'package:PiliBro/http/browser_ua.dart';
+import 'package:PiliBro/http/constants.dart';
+import 'package:PiliBro/http/loading_state.dart';
+import 'package:PiliBro/http/video.dart';
+import 'package:PiliBro/models/common/account_type.dart';
+import 'package:PiliBro/models/common/audio_normalization.dart';
+import 'package:PiliBro/models/common/network_profile.dart';
+import 'package:PiliBro/models/common/super_resolution_type.dart';
+import 'package:PiliBro/models/common/video/video_decode_type.dart';
+import 'package:PiliBro/models/common/video/video_type.dart';
+import 'package:PiliBro/models/user/danmaku_rule.dart';
+import 'package:PiliBro/models/video/play/url.dart';
+import 'package:PiliBro/models_new/video/video_shot/data.dart';
+import 'package:PiliBro/pages/danmaku/danmaku_model.dart';
+import 'package:PiliBro/pages/setting/models/play_settings.dart'
     show kMaxVolume;
-import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
-import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
-import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
-import 'package:PiliPlus/plugin/pl_player/models/double_tap_type.dart';
-import 'package:PiliPlus/plugin/pl_player/models/duration.dart';
-import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
-import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
-import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
-import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
-import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
-import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
-import 'package:PiliPlus/services/service_locator.dart';
-import 'package:PiliPlus/services/playback_stats_service.dart';
-import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/android/android_helper.dart';
-import 'package:PiliPlus/utils/android/bindings.g.dart';
-import 'package:PiliPlus/utils/asset_utils.dart';
-import 'package:PiliPlus/utils/connectivity_utils.dart';
-import 'package:PiliPlus/utils/device_utils.dart';
-import 'package:PiliPlus/utils/duration_utils.dart';
-import 'package:PiliPlus/utils/extension/box_ext.dart';
-import 'package:PiliPlus/utils/extension/num_ext.dart';
-import 'package:PiliPlus/utils/feed_back.dart';
-import 'package:PiliPlus/utils/image_utils.dart';
-import 'package:PiliPlus/utils/page_utils.dart';
-import 'package:PiliPlus/utils/path_utils.dart';
-import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:PiliPlus/utils/storage.dart';
-import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliBro/pages/sponsor_block/block_mixin.dart';
+import 'package:PiliBro/plugin/pl_player/models/data_source.dart';
+import 'package:PiliBro/plugin/pl_player/models/data_status.dart';
+import 'package:PiliBro/plugin/pl_player/models/double_tap_type.dart';
+import 'package:PiliBro/plugin/pl_player/models/duration.dart';
+import 'package:PiliBro/plugin/pl_player/models/fullscreen_mode.dart';
+import 'package:PiliBro/plugin/pl_player/models/heart_beat_type.dart';
+import 'package:PiliBro/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliBro/plugin/pl_player/models/play_status.dart';
+import 'package:PiliBro/plugin/pl_player/models/video_fit_type.dart';
+import 'package:PiliBro/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliBro/services/service_locator.dart';
+import 'package:PiliBro/services/playback_stats_service.dart';
+import 'package:PiliBro/utils/accounts.dart';
+import 'package:PiliBro/utils/android/android_helper.dart';
+import 'package:PiliBro/utils/android/bindings.g.dart';
+import 'package:PiliBro/utils/asset_utils.dart';
+import 'package:PiliBro/utils/connectivity_utils.dart';
+import 'package:PiliBro/utils/device_utils.dart';
+import 'package:PiliBro/utils/duration_utils.dart';
+import 'package:PiliBro/utils/extension/box_ext.dart';
+import 'package:PiliBro/utils/extension/num_ext.dart';
+import 'package:PiliBro/utils/feed_back.dart';
+import 'package:PiliBro/utils/image_utils.dart';
+import 'package:PiliBro/utils/page_utils.dart';
+import 'package:PiliBro/utils/path_utils.dart';
+import 'package:PiliBro/utils/platform_utils.dart';
+import 'package:PiliBro/utils/storage.dart';
+import 'package:PiliBro/utils/storage_key.dart';
+import 'package:PiliBro/utils/storage_pref.dart';
+import 'package:PiliBro/utils/utils.dart';
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:easy_debounce/easy_throttle.dart';
@@ -218,6 +218,10 @@ class PlPlayerController with BlockConfigMixin {
 
   Future<void> exitDesktopPip() {
     isDesktopPip = false;
+    PlaybackStatsService.changePlaybackForm(
+      'window',
+      videoPlayerController?.state.position ?? Duration.zero,
+    );
     return Future.wait([
       if (showWindowTitleBar)
         windowManager.setTitleBarStyle(TitleBarStyle.normal),
@@ -232,6 +236,10 @@ class PlPlayerController with BlockConfigMixin {
     if (isFullScreen.value) return;
 
     isDesktopPip = true;
+    PlaybackStatsService.changePlaybackForm(
+      'pip',
+      videoPlayerController?.state.position ?? Duration.zero,
+    );
 
     _lastWindowBounds = await windowManager.getBounds();
 
@@ -682,8 +690,14 @@ class PlPlayerController with BlockConfigMixin {
     int? seasonId,
     int? pgcType,
     int? liveUid,
+    String? liveName,
     int? videoUpUid,
     String? videoUpName,
+    int? partitionId,
+    String? partitionName,
+    String? copyright,
+    String? codec,
+    String? quality,
     VideoType? videoType,
     VoidCallback? onInit,
     Volume? volume,
@@ -733,8 +747,36 @@ class PlPlayerController with BlockConfigMixin {
         defaultSpeed: Pref.playSpeedDefault,
         cid: cid,
         liveUid: liveUid,
+        liveName: liveName,
         videoUpUid: videoUpUid,
         videoUpName: videoUpName,
+        partitionId: partitionId,
+        partitionName: partitionName,
+        copyright: copyright,
+        sourceDuration: duration,
+        orientation: width == null ||
+                height == null ||
+                width <= 0 ||
+                height <= 0
+            ? 'unknown'
+            : width == height
+            ? 'square'
+            : isVertical == true
+            ? 'vertical'
+            : 'horizontal',
+        contentType: dataSource is FileSource
+            ? 'local'
+            : (videoType ?? VideoType.ugc).name,
+        codec: codec,
+        quality: quality,
+        network: switch (ConnectivityUtils.current) {
+          final profile? =>
+            '${profile.transport.name}:${profile.useCellularPreferences ? 'cellularPreference' : 'broadbandPreference'}',
+          null => 'unknown',
+        },
+        subtitle: Pref.subtitlePreferenceV2.name,
+        danmakuEnabled: enableShowDanmakuAdaptive.value,
+        decoder: hwdec ?? 'software',
       );
       // 配置Player 音轨、字幕等等
       await _createVideoController(dataSource, seekTo, volume);
@@ -1565,6 +1607,10 @@ class PlPlayerController with BlockConfigMixin {
 
   void _setFullScreen(bool val) {
     isFullScreen.value = val;
+    PlaybackStatsService.changePlaybackForm(
+      val ? 'fullscreen' : 'window',
+      videoPlayerController?.state.position ?? Duration.zero,
+    );
     updateSubtitleStyle();
   }
 

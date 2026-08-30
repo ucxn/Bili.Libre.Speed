@@ -2,75 +2,75 @@ import 'dart:async';
 import 'dart:math' show min;
 import 'dart:ui';
 
-import 'package:PiliPlus/common/style.dart';
-import 'package:PiliPlus/common/widgets/pair.dart';
-import 'package:PiliPlus/common/widgets/progress_bar/segment_progress_bar.dart';
-import 'package:PiliPlus/common/widgets/scaffold/mini_scaffold.dart';
-import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pbenum.dart'
+import 'package:PiliBro/common/style.dart';
+import 'package:PiliBro/common/widgets/pair.dart';
+import 'package:PiliBro/common/widgets/progress_bar/segment_progress_bar.dart';
+import 'package:PiliBro/common/widgets/scaffold/mini_scaffold.dart';
+import 'package:PiliBro/grpc/bilibili/app/listener/v1.pbenum.dart'
     show PlaylistSource;
-import 'package:PiliPlus/grpc/dm.dart';
-import 'package:PiliPlus/http/browser_ua.dart';
-import 'package:PiliPlus/http/fav.dart';
-import 'package:PiliPlus/http/init.dart';
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/user.dart';
-import 'package:PiliPlus/http/video.dart';
-import 'package:PiliPlus/models/common/account_type.dart';
-import 'package:PiliPlus/models/common/network_profile.dart';
-import 'package:PiliPlus/models/common/sponsor_block/action_type.dart';
-import 'package:PiliPlus/models/common/sponsor_block/post_segment_model.dart';
-import 'package:PiliPlus/models/common/sponsor_block/segment_model.dart';
-import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
-import 'package:PiliPlus/models/common/video/cdn_type.dart';
-import 'package:PiliPlus/models/common/video/source_type.dart';
-import 'package:PiliPlus/models/common/video/subtitle_pref_type.dart';
-import 'package:PiliPlus/models/common/video/video_decode_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
-import 'package:PiliPlus/models/common/video/video_type.dart';
-import 'package:PiliPlus/models/video/play/url.dart';
-import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
-import 'package:PiliPlus/models_new/media_list/media_list.dart';
-import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
-import 'package:PiliPlus/models_new/video/video_detail/data.dart';
-import 'package:PiliPlus/models_new/video/video_detail/episode.dart' as ugc;
-import 'package:PiliPlus/models_new/video/video_detail/page.dart';
-import 'package:PiliPlus/models_new/video/video_pbp/data.dart';
-import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
-import 'package:PiliPlus/models_new/video/video_stein_edgeinfo/data.dart';
-import 'package:PiliPlus/pages/audio/view.dart';
-import 'package:PiliPlus/pages/common/publish/publish_route.dart';
-import 'package:PiliPlus/pages/search/widgets/search_text.dart';
-import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
-import 'package:PiliPlus/pages/video/download_panel/view.dart';
-import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
-import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
-import 'package:PiliPlus/pages/video/medialist/view.dart';
-import 'package:PiliPlus/pages/video/note/view.dart';
-import 'package:PiliPlus/pages/video/post_panel/view.dart';
-import 'package:PiliPlus/pages/video/send_danmaku/view.dart';
-import 'package:PiliPlus/pages/video/widgets/header_control.dart';
-import 'package:PiliPlus/plugin/pl_player/controller.dart';
-import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
-import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
-import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
-import 'package:PiliPlus/services/download/download_service.dart';
-import 'package:PiliPlus/services/cdn_last_video_service.dart';
-import 'package:PiliPlus/services/playback_stats_service.dart';
-import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/extension/context_ext.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
-import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
-import 'package:PiliPlus/utils/extension/num_ext.dart';
-import 'package:PiliPlus/utils/extension/size_ext.dart';
-import 'package:PiliPlus/utils/page_utils.dart';
-import 'package:PiliPlus/utils/platform_utils.dart';
-import 'package:PiliPlus/utils/storage.dart';
-import 'package:PiliPlus/utils/storage_key.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/theme_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
-import 'package:PiliPlus/utils/video_utils.dart';
+import 'package:PiliBro/grpc/dm.dart';
+import 'package:PiliBro/http/browser_ua.dart';
+import 'package:PiliBro/http/fav.dart';
+import 'package:PiliBro/http/init.dart';
+import 'package:PiliBro/http/loading_state.dart';
+import 'package:PiliBro/http/user.dart';
+import 'package:PiliBro/http/video.dart';
+import 'package:PiliBro/models/common/account_type.dart';
+import 'package:PiliBro/models/common/network_profile.dart';
+import 'package:PiliBro/models/common/sponsor_block/action_type.dart';
+import 'package:PiliBro/models/common/sponsor_block/post_segment_model.dart';
+import 'package:PiliBro/models/common/sponsor_block/segment_model.dart';
+import 'package:PiliBro/models/common/sponsor_block/segment_type.dart';
+import 'package:PiliBro/models/common/video/audio_quality.dart';
+import 'package:PiliBro/models/common/video/cdn_type.dart';
+import 'package:PiliBro/models/common/video/source_type.dart';
+import 'package:PiliBro/models/common/video/subtitle_pref_type.dart';
+import 'package:PiliBro/models/common/video/video_decode_type.dart';
+import 'package:PiliBro/models/common/video/video_quality.dart';
+import 'package:PiliBro/models/common/video/video_type.dart';
+import 'package:PiliBro/models/video/play/url.dart';
+import 'package:PiliBro/models_new/download/bili_download_entry_info.dart';
+import 'package:PiliBro/models_new/media_list/media_list.dart';
+import 'package:PiliBro/models_new/pgc/pgc_info_model/result.dart';
+import 'package:PiliBro/models_new/video/video_detail/data.dart';
+import 'package:PiliBro/models_new/video/video_detail/episode.dart' as ugc;
+import 'package:PiliBro/models_new/video/video_detail/page.dart';
+import 'package:PiliBro/models_new/video/video_pbp/data.dart';
+import 'package:PiliBro/models_new/video/video_play_info/subtitle.dart';
+import 'package:PiliBro/models_new/video/video_stein_edgeinfo/data.dart';
+import 'package:PiliBro/pages/audio/view.dart';
+import 'package:PiliBro/pages/common/publish/publish_route.dart';
+import 'package:PiliBro/pages/search/widgets/search_text.dart';
+import 'package:PiliBro/pages/sponsor_block/block_mixin.dart';
+import 'package:PiliBro/pages/video/download_panel/view.dart';
+import 'package:PiliBro/pages/video/introduction/pgc/controller.dart';
+import 'package:PiliBro/pages/video/introduction/ugc/controller.dart';
+import 'package:PiliBro/pages/video/medialist/view.dart';
+import 'package:PiliBro/pages/video/note/view.dart';
+import 'package:PiliBro/pages/video/post_panel/view.dart';
+import 'package:PiliBro/pages/video/send_danmaku/view.dart';
+import 'package:PiliBro/pages/video/widgets/header_control.dart';
+import 'package:PiliBro/plugin/pl_player/controller.dart';
+import 'package:PiliBro/plugin/pl_player/models/data_source.dart';
+import 'package:PiliBro/plugin/pl_player/models/heart_beat_type.dart';
+import 'package:PiliBro/plugin/pl_player/models/play_status.dart';
+import 'package:PiliBro/services/download/download_service.dart';
+import 'package:PiliBro/services/cdn_last_video_service.dart';
+import 'package:PiliBro/services/playback_stats_service.dart';
+import 'package:PiliBro/utils/accounts.dart';
+import 'package:PiliBro/utils/extension/context_ext.dart';
+import 'package:PiliBro/utils/extension/iterable_ext.dart';
+import 'package:PiliBro/utils/extension/nested_scroll_ext.dart';
+import 'package:PiliBro/utils/extension/num_ext.dart';
+import 'package:PiliBro/utils/extension/size_ext.dart';
+import 'package:PiliBro/utils/page_utils.dart';
+import 'package:PiliBro/utils/platform_utils.dart';
+import 'package:PiliBro/utils/storage.dart';
+import 'package:PiliBro/utils/storage_key.dart';
+import 'package:PiliBro/utils/storage_pref.dart';
+import 'package:PiliBro/utils/theme_utils.dart';
+import 'package:PiliBro/utils/utils.dart';
+import 'package:PiliBro/utils/video_utils.dart';
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart' show Options;
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart'
@@ -156,6 +156,74 @@ class VideoDetailController extends GetxController
     }
   }
 
+  List<String> get otherStreamSizeAndBitrates {
+    if (!videoState.value || data.dash?.video == null) return const [];
+    try {
+      final audio = data.dash?.audio?.firstWhereOrNull(
+        (item) => item.id == currentAudioQa?.code,
+      );
+      final durationMs = data.timeLength ?? 0;
+      final current = _streamMetrics(firstVideo, audio, durationMs);
+      if (current == null || current.bytes <= 0) return const [];
+      final currentFormat = VideoDecodeFormatType.fromString(
+        firstVideo.codecs ?? '',
+      );
+      final quality = currentVideoQa.value?.code ?? firstVideo.id;
+      const order = [
+        VideoDecodeFormatType.AVC,
+        VideoDecodeFormatType.HEVC,
+        VideoDecodeFormatType.AV1,
+      ];
+      final rows = <String>[];
+      for (final format in order) {
+        if (format == currentFormat) continue;
+        final candidates = data.dash!.video!.where(
+          (item) =>
+              item.id == quality &&
+              item.codecs != null &&
+              format.codes.any(item.codecs!.startsWith),
+        );
+        if (candidates.isEmpty) continue;
+        final item = candidates.reduce(
+          (a, b) => (a.bandWidth ?? 0) >= (b.bandWidth ?? 0) ? a : b,
+        );
+        final metrics = _streamMetrics(item, audio, durationMs);
+        if (metrics == null || metrics.bytes <= 0) continue;
+        final relative = metrics.bytes * 100 / current.bytes;
+        rows.add(
+          '${_codecDisplayName(format)}: ${metrics.text} (${relative.toStringAsFixed(0)}%)',
+        );
+      }
+      return rows.take(2).toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  ({int bytes, int bitrate, String text})? _streamMetrics(
+    BaseItem video,
+    BaseItem? audio,
+    int durationMs,
+  ) {
+    final bitrate = (video.bandWidth ?? 0) + (audio?.bandWidth ?? 0);
+    if (bitrate <= 0 || durationMs <= 0) return null;
+    final bytes = (bitrate * durationMs / 8000).round();
+    final size = bytes >= 1073741824
+        ? '${(bytes / 1073741824).toStringAsFixed(2)} GiB'
+        : '${(bytes / 1048576).toStringAsFixed(1)} MiB';
+    final rate = bitrate >= 1000000
+        ? '${(bitrate / 1000000).toStringAsFixed(2)} Mb/s'
+        : '${(bitrate / 1000).toStringAsFixed(0)} kb/s';
+    return (bytes: bytes, bitrate: bitrate, text: '约 $size · $rate');
+  }
+
+  String _codecDisplayName(VideoDecodeFormatType format) => switch (format) {
+    VideoDecodeFormatType.AVC => 'H264',
+    VideoDecodeFormatType.HEVC => 'h265',
+    VideoDecodeFormatType.AV1 => 'AV1',
+    VideoDecodeFormatType.DVH1 => 'DVH1',
+  };
+
   // 是否开始自动播放 存在多p的情况下，第二p需要为true
   final RxBool _autoPlay = Pref.autoPlayEnable.obs;
 
@@ -225,6 +293,48 @@ class VideoDetailController extends GetxController
       return detail.bvid == bvid ? detail.owner?.name : null;
     } catch (_) {
       return null;
+    }
+  }
+
+  int? get videoPartitionId {
+    try {
+      if (!isUgc) {
+        return Get.find<PgcIntroController>(tag: heroTag).pgcItem.type;
+      }
+      final detail = Get.find<UgcIntroController>(tag: heroTag).videoDetail.value;
+      return detail.bvid == bvid ? detail.tid : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? get videoPartitionName {
+    try {
+      if (!isUgc) {
+        final item = Get.find<PgcIntroController>(tag: heroTag).pgcItem;
+        return 'PGC:${item.type ?? 'unknown'}:${item.areas?.firstOrNull?.name ?? '未知地区'}';
+      }
+      final detail = Get.find<UgcIntroController>(tag: heroTag).videoDetail.value;
+      return detail.bvid == bvid ? detail.tname : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String get videoCopyright {
+    if (!isUgc) return 'licensed';
+    try {
+      final value = Get.find<UgcIntroController>(tag: heroTag)
+          .videoDetail
+          .value
+          .copyright;
+      return switch (value) {
+        1 => 'original',
+        2 => 'repost',
+        _ => 'unknown',
+      };
+    } catch (_) {
+      return 'unknown';
     }
   }
 
@@ -924,6 +1034,11 @@ class VideoDetailController extends GetxController
       videoType: videoType,
       videoUpUid: videoUpUid,
       videoUpName: videoUpName,
+      partitionId: videoPartitionId,
+      partitionName: videoPartitionName,
+      copyright: videoCopyright,
+      codec: currentDecodeFormats.name,
+      quality: currentVideoQa.value?.code.toString(),
       onInit: () {
         videoState.value = true;
         setSubtitle(vttSubtitlesIndex.value);
@@ -1261,6 +1376,11 @@ class VideoDetailController extends GetxController
     if (index <= 0) {
       await plPlayerController.videoPlayerController?.setSubtitleTrack(.no());
       vttSubtitlesIndex.value = index;
+      PlaybackStatsService.samplePosition(
+        plPlayerController.videoPlayerController?.state.position ??
+            Duration.zero,
+      );
+      PlaybackStatsService.updateVideoContext(subtitle: 'off');
       return;
     }
 
@@ -1275,6 +1395,13 @@ class VideoDetailController extends GetxController
         SubtitleTrack(subUri, sub.lanDoc, sub.lan, uri: true),
       );
       vttSubtitlesIndex.value = index;
+      PlaybackStatsService.samplePosition(
+        plPlayerController.videoPlayerController?.state.position ??
+            Duration.zero,
+      );
+      PlaybackStatsService.updateVideoContext(
+        subtitle: sub.lan.isNotEmpty ? sub.lan : (sub.lanDoc ?? 'on'),
+      );
     }
 
     var subtitle = vttSubtitles[index - 1];
