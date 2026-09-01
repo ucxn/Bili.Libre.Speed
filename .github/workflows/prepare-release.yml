@@ -38,8 +38,8 @@ jobs:
       - name: 提交到 upStream
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "keil5-commits"
+          git config user.email "keil510086@gmail.com"
 
           git add -A
           if git diff --cached --quiet; then
@@ -48,7 +48,11 @@ jobs:
             exit 0
           fi
 
-          git commit -m "prepare: release candidate @ ${SOURCE_SHA:0:12}"
+          git commit \
+            --author="Reality <244209739+1-Reality@users.noreply.github.com>" \
+            -m "prepare: release candidate @ ${SOURCE_SHA:0:12}" \
+            -m "Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>" \
+            -m "Co-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>"
           git push origin HEAD:upStream
 
           echo "Prepared from: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"

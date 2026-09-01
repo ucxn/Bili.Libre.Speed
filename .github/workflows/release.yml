@@ -11,17 +11,17 @@ on:
       build_ios:
         description: "Build iOS"
         required: false
-        default: true
+        default: false
         type: boolean
       build_mac:
         description: "Build macOS"
         required: false
-        default: true
+        default: false
         type: boolean
       build_linux_x64:
         description: "Build Linux x64"
         required: false
-        default: true
+        default: false
         type: boolean
       build_win_x64:
         description: "Build Windows x64"
@@ -33,9 +33,19 @@ on:
         required: false
         default: ""
         type: string
+      build_number:
+        description: "Build number；0 = 自动"
+        required: false
+        default: "0"
+        type: string
+      release_notes:
+        description: "Release notes"
+        required: false
+        default: ""
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -56,6 +66,7 @@ jobs:
           BUILD_MAC: ${{ inputs.build_mac }}
           BUILD_LINUX: ${{ inputs.build_linux_x64 }}
           BUILD_WINDOWS: ${{ inputs.build_win_x64 }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${GITHUB_REF_NAME}" != "dev" ]]; then
@@ -63,9 +74,14 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "${BUILD_NUMBER}" =~ ^(0|[1-9][0-9]*)$ ]]; then
+            echo "Build number 必须是 0 或正整数。"
+            exit 1
+          fi
+
           if [[ -n "${TAG}" ]]; then
-            if [[ "${BUILD_ANDROID}" != "true" || "${BUILD_IOS}" != "true" || "${BUILD_MAC}" != "true" || "${BUILD_LINUX}" != "true" || "${BUILD_WINDOWS}" != "true" ]]; then
-              echo "正式 Release 必须包含 Android、iOS、macOS、Linux、Windows 全部平台。"
+            if [[ "${BUILD_ANDROID}" != "true" || "${BUILD_WINDOWS}" != "true" ]]; then
+              echo "正式 Release 至少必须包含 Android 和 Windows。"
               exit 1
             fi
 
@@ -143,6 +159,9 @@ jobs:
 
       - name: Set and Extract version
         shell: pwsh
+        env:
+          BUILD_NUMBER_OVERRIDE: ${{ inputs.build_number }}
+          RELEASE_TAG_OVERRIDE: ${{ inputs.tag }}
         run: lib/scripts/build.ps1 android
 
       - name: Build Android
@@ -184,6 +203,9 @@ jobs:
 
       - name: Set and Extract version
         shell: pwsh
+        env:
+          BUILD_NUMBER_OVERRIDE: ${{ inputs.build_number }}
+          RELEASE_TAG_OVERRIDE: ${{ inputs.tag }}
         run: lib/scripts/build.ps1
 
       - name: Apply Patch
@@ -225,6 +247,9 @@ jobs:
 
       - name: Set and Extract version
         shell: pwsh
+        env:
+          BUILD_NUMBER_OVERRIDE: ${{ inputs.build_number }}
+          RELEASE_TAG_OVERRIDE: ${{ inputs.tag }}
         run: lib/scripts/build.ps1
 
       - name: Apply Patch
@@ -276,6 +301,9 @@ jobs:
 
       - name: Set and Extract version
         shell: pwsh
+        env:
+          BUILD_NUMBER_OVERRIDE: ${{ inputs.build_number }}
+          RELEASE_TAG_OVERRIDE: ${{ inputs.tag }}
         run: lib/scripts/build.ps1
 
       - name: Apply Patch
@@ -440,6 +468,9 @@ jobs:
 
       - name: Set and Extract version
         shell: pwsh
+        env:
+          BUILD_NUMBER_OVERRIDE: ${{ inputs.build_number }}
+          RELEASE_TAG_OVERRIDE: ${{ inputs.tag }}
         run: lib/scripts/build.ps1
 
       - name: Apply Patch
@@ -464,17 +495,25 @@ jobs:
             Move-Item $_.FullName "PiliBro-Win-Setup/PiliBro_windows_${{ env.version }}_x64_setup.exe"
           }
 
-      - name: Compress
+      - name: Compress portable ZIP
+        if: ${{ inputs.tag != '' }}
         shell: pwsh
         run: Compress-Archive -Path "Release/PiliBro-Win" -DestinationPath "PiliBro_windows_${{ env.version }}_x64_portable.zip"
 
-      - name: Upload Windows
+      - name: Upload Windows setup
         uses: actions/upload-artifact@v7
         with:
-          name: release-windows
-          path: |
-            PiliBro_windows_*_x64_portable.zip
-            PiliBro-Win-Setup/PiliBro_windows_*_x64_setup.exe
+          name: release-windows-setup
+          path: PiliBro-Win-Setup/PiliBro_windows_*_x64_setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Windows portable
+        if: ${{ inputs.tag != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-windows-portable
+          path: PiliBro_windows_*_x64_portable.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -487,12 +526,14 @@ jobs:
         inputs.tag != '' &&
         needs.validate.result == 'success' &&
         needs.android.result == 'success' &&
-        needs.ios.result == 'success' &&
-        needs.mac.result == 'success' &&
-        needs.linux_x64.result == 'success' &&
-        needs.win_x64.result == 'success'
+        needs.win_x64.result == 'success' &&
+        (needs.ios.result == 'success' || needs.ios.result == 'skipped') &&
+        (needs.mac.result == 'success' || needs.mac.result == 'skipped') &&
+        (needs.linux_x64.result == 'success' || needs.linux_x64.result == 'skipped')
       }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -510,12 +551,12 @@ jobs:
         shell: bash
         env:
           TAG: ${{ inputs.tag }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from urllib.parse import quote
           import os
-          import textwrap
 
           root = Path("release-assets")
           tag = os.environ["TAG"]
@@ -527,41 +568,39 @@ jobs:
                   raise SystemExit(f"{pattern}: expected exactly one asset, found {len(matches)}")
               return matches[0]
 
+          def maybe_one(pattern):
+              matches = [p for p in root.rglob(pattern) if p.is_file()]
+              if len(matches) > 1:
+                  raise SystemExit(f"{pattern}: expected at most one asset, found {len(matches)}")
+              return matches[0] if matches else None
+
           files = {
               "android_arm64": one("PiliBro_android_*_arm64-v8a.apk"),
               "android_armv7": one("PiliBro_android_*_armeabi-v7a.apk"),
               "android_x86": one("PiliBro_android_*_x86_64.apk"),
-              "ios": one("PiliBro_ios_*.ipa"),
-              "mac": one("PiliBro_macos_*.dmg"),
-              "linux_targz": one("PiliBro_linux_*_amd64.tar.gz"),
-              "linux_appimage": one("PiliBro_linux_*_amd64.AppImage"),
-              "linux_deb": one("PiliBro_linux_*_amd64.deb"),
-              "linux_rpm": one("PiliBro_linux_*_amd64.rpm"),
               "windows_setup": one("PiliBro_windows_*_x64_setup.exe"),
               "windows_portable": one("PiliBro_windows_*_x64_portable.zip"),
+              "ios": maybe_one("PiliBro_ios_*.ipa"),
+              "mac": maybe_one("PiliBro_macos_*.dmg"),
+              "linux_targz": maybe_one("PiliBro_linux_*_amd64.tar.gz"),
+              "linux_appimage": maybe_one("PiliBro_linux_*_amd64.AppImage"),
+              "linux_deb": maybe_one("PiliBro_linux_*_amd64.deb"),
+              "linux_rpm": maybe_one("PiliBro_linux_*_amd64.rpm"),
           }
 
           tag_url = quote(tag, safe="")
           base = f"https://github.com/{repo}/releases/download/{tag_url}/"
+
           def asset_url(key):
-              return base + quote(files[key].name, safe="")
+              file = files.get(key)
+              return base + quote(file.name, safe="") if file else ""
 
-          urls = {
-              "YOUR_ANDROID_ARM64_URL": asset_url("android_arm64"),
-              "YOUR_ANDROID_ARMV7_URL": asset_url("android_armv7"),
-              "YOUR_ANDROID_X86_URL": asset_url("android_x86"),
-              "YOUR_IOS_URL": asset_url("ios"),
-              "YOUR_MAC_URL": asset_url("mac"),
-              "YOUR_LINUX_TARGZ_URL": asset_url("linux_targz"),
-              "YOUR_LINUX_APPIMAGE_URL": asset_url("linux_appimage"),
-              "YOUR_LINUX_DEB_URL": asset_url("linux_deb"),
-              "YOUR_LINUX_RPM_URL": asset_url("linux_rpm"),
-              "YOUR_WINDOWS_SETUP_URL": asset_url("windows_setup"),
-              "YOUR_WINDOWS_PORTABLE_URL": asset_url("windows_portable"),
-              "LAPTOP_SVG_URL": f"https://raw.githubusercontent.com/{repo}/{tag_url}/.vscode/laptop.svg",
-          }
+          parts = []
+          notes = os.environ.get("RELEASE_NOTES", "").strip()
+          if notes:
+              parts.append(notes)
 
-          body = r'''<div align="center">
+          parts.append('''<div align="center">
 
           <img alt="Xiaomi" src="https://img.shields.io/badge/小米-FF6900?style=for-the-badge&logo=xiaomi&logoColor=white" />
           <img alt="OPPO" src="https://img.shields.io/badge/OPPO-2D9C3C?style=for-the-badge&logoColor=white" />
@@ -572,44 +611,56 @@ jobs:
           <img alt="Google Pixel" src="https://img.shields.io/badge/Pixel-4285F4?style=for-the-badge&logo=google&logoColor=white" />
           <img alt="nubia / REDMAGIC" height="18" src="https://upload.wikimedia.org/wikipedia/commons/f/f6/Nubia_logo.svg" />
 
-          </div>
+          </div>''')
 
-          [安卓版下载](YOUR_ANDROID_ARM64_URL)（适用于 Arm V8 的绝大多数安卓手机）
+          a64 = asset_url("android_arm64")
+          a7 = asset_url("android_armv7")
+          ax86 = asset_url("android_x86")
+          parts.append(f'''[安卓版下载]({a64})（适用于 Arm V8 的绝大多数安卓手机）
 
-          [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](YOUR_ANDROID_ARM64_URL) [![立即下载](https://img.shields.io/badge/立即下载-推荐版本-FF4D4F?style=for-the-badge&logoColor=white)](YOUR_ANDROID_ARM64_URL)
+          [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)]({a64}) [![立即下载](https://img.shields.io/badge/立即下载-推荐版本-FF4D4F?style=for-the-badge&logoColor=white)]({a64})
 
-          Arm V7 老安卓[手机版下载](YOUR_ANDROID_ARMV7_URL)
+          Arm V7 老安卓[手机版下载]({a7})
 
-          [![Android](https://img.shields.io/badge/安卓-3DDC84?style=for-the-badge&logo=android&logoColor=white)](YOUR_ANDROID_ARMV7_URL) [![ARMv7](https://img.shields.io/badge/ARMv7-0A84FF?style=for-the-badge&logo=arm&logoColor=white)](YOUR_ANDROID_ARMV7_URL) [![下载](https://img.shields.io/badge/下载-旧设备适用-666666?style=for-the-badge&logoColor=white)](YOUR_ANDROID_ARMV7_URL)
+          [![Android](https://img.shields.io/badge/安卓-3DDC84?style=for-the-badge&logo=android&logoColor=white)]({a7}) [![ARMv7](https://img.shields.io/badge/ARMv7-0A84FF?style=for-the-badge&logo=arm&logoColor=white)]({a7}) [![下载](https://img.shields.io/badge/下载-旧设备适用-666666?style=for-the-badge&logoColor=white)]({a7})
 
-          安卓 x86 [版本下载](YOUR_ANDROID_X86_URL)
+          安卓 x86 [版本下载]({ax86})
 
-          [![Intel icon](https://img.shields.io/badge/%20-0071C5?style=for-the-badge&logo=intel&logoColor=white)](YOUR_ANDROID_X86_URL)[![Intel wordmark](https://img.shields.io/badge/%20-0071C5?style=for-the-badge&logo=intel&logoColor=white&logoSize=auto)](YOUR_ANDROID_X86_URL) [![Android x86](https://img.shields.io/badge/Android-x86版本-3DDC84?style=for-the-badge&logo=android&logoColor=white)](YOUR_ANDROID_X86_URL)
+          [![Intel icon](https://img.shields.io/badge/%20-0071C5?style=for-the-badge&logo=intel&logoColor=white)]({ax86}) [![Android x86](https://img.shields.io/badge/Android-x86版本-3DDC84?style=for-the-badge&logo=android&logoColor=white)]({ax86})''')
 
-          iOS [版本下载](YOUR_IOS_URL)
+          if files["ios"]:
+              ios = asset_url("ios")
+              parts.append(f'''iOS [版本下载]({ios})
 
-          [![Apple](https://img.shields.io/badge/Apple-000000?style=for-the-badge&logo=apple&logoColor=white)](YOUR_IOS_URL) [![iPadOS](https://img.shields.io/badge/iPadOS-5E5CE6?style=for-the-badge&logo=apple&logoColor=white)](YOUR_IOS_URL) [![App Store](https://img.shields.io/badge/App_Store-0D96F6?style=for-the-badge&logo=appstore&logoColor=white)](YOUR_IOS_URL)
+          [![Apple](https://img.shields.io/badge/Apple-000000?style=for-the-badge&logo=apple&logoColor=white)]({ios}) [![iPadOS](https://img.shields.io/badge/iPadOS-5E5CE6?style=for-the-badge&logo=apple&logoColor=white)]({ios})''')
 
-          macOS [版本下载](YOUR_MAC_URL)
+          if files["mac"]:
+              mac = asset_url("mac")
+              parts.append(f'''macOS [版本下载]({mac})
 
-          [![macOS](https://img.shields.io/badge/macOS-桌面版本-555555?style=for-the-badge&logo=apple&logoColor=white)](YOUR_MAC_URL)
+          [![macOS](https://img.shields.io/badge/macOS-桌面版本-555555?style=for-the-badge&logo=apple&logoColor=white)]({mac})''')
 
-          Linux [下载](YOUR_LINUX_TARGZ_URL)
+          if files["linux_targz"]:
+              targz = asset_url("linux_targz")
+              appimage = asset_url("linux_appimage")
+              deb = asset_url("linux_deb")
+              rpm = asset_url("linux_rpm")
+              parts.append(f'''Linux [下载]({targz})
 
-          [![Linux](https://img.shields.io/badge/Linux-333333?style=for-the-badge&logo=linux&logoColor=white)](YOUR_LINUX_APPIMAGE_URL)[![AppImage](https://img.shields.io/badge/AppImage-通用版-00A98F?style=for-the-badge&logoColor=white)](YOUR_LINUX_APPIMAGE_URL)
+          [![Linux](https://img.shields.io/badge/Linux-333333?style=for-the-badge&logo=linux&logoColor=white)]({appimage}) [![AppImage](https://img.shields.io/badge/AppImage-通用版-00A98F?style=for-the-badge&logoColor=white)]({appimage})
 
-          [![Debian 系](https://img.shields.io/badge/Debian系-A80030?style=for-the-badge&logo=debian&logoColor=white)](YOUR_LINUX_DEB_URL)[![Ubuntu / Mint](https://img.shields.io/badge/Ubuntu%20%2F%20Mint-适用-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](YOUR_LINUX_DEB_URL)
+          [![Debian 系](https://img.shields.io/badge/Debian系-A80030?style=for-the-badge&logo=debian&logoColor=white)]({deb}) [![Ubuntu / Mint](https://img.shields.io/badge/Ubuntu%20%2F%20Mint-适用-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)]({deb})
 
-          [![RPM 系](https://img.shields.io/badge/RPM系-5B3FD0?style=for-the-badge&logoColor=white)](YOUR_LINUX_RPM_URL)[![Fedora / openSUSE](https://img.shields.io/badge/Fedora%20%2F%20openSUSE-适用-3B82F6?style=for-the-badge&logo=fedora&logoColor=white)](YOUR_LINUX_RPM_URL)
+          [![RPM 系](https://img.shields.io/badge/RPM系-5B3FD0?style=for-the-badge&logoColor=white)]({rpm}) [![Fedora / openSUSE](https://img.shields.io/badge/Fedora%20%2F%20openSUSE-适用-3B82F6?style=for-the-badge&logo=fedora&logoColor=white)]({rpm})''')
 
-          Windows x86_64 [下载](YOUR_WINDOWS_SETUP_URL)
+          win_setup = asset_url("windows_setup")
+          win_portable = asset_url("windows_portable")
+          laptop = f"https://raw.githubusercontent.com/{repo}/{tag_url}/.vscode/laptop.svg"
+          parts.append(f'''Windows x86_64 [下载]({win_setup})
 
-          <a href="YOUR_WINDOWS_SETUP_URL"><img alt="Windows" height="28" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Unofficial_Windows_logo_variant_-_2002%E2%80%932012_%28Multicolored%29.svg" /></a> [![AMD](https://img.shields.io/badge/%20-ED1C24?style=for-the-badge&logo=amd&logoColor=white&logoSize=auto)](YOUR_WINDOWS_PORTABLE_URL) <a href="YOUR_WINDOWS_SETUP_URL"><img alt="Gaming laptop" height="42" src="LAPTOP_SVG_URL" /></a>
-          '''
+          <a href="{win_setup}"><img alt="Windows" height="28" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Unofficial_Windows_logo_variant_-_2002%E2%80%932012_%28Multicolored%29.svg" /></a> [![AMD](https://img.shields.io/badge/%20-ED1C24?style=for-the-badge&logo=amd&logoColor=white&logoSize=auto)]({win_portable}) <a href="{win_setup}"><img alt="Gaming laptop" height="42" src="{laptop}" /></a>''')
 
-          body = textwrap.dedent(body)
-          for key, value in urls.items():
-              body = body.replace(key, value)
+          body = "\n\n".join(part.strip() for part in parts if part.strip()) + "\n"
           Path("release_body.md").write_text(body, encoding="utf-8")
           PY
 
@@ -620,8 +671,8 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           mapfile -d '' ASSETS < <(find release-assets -type f -print0)
-          if [[ ${#ASSETS[@]} -ne 11 ]]; then
-            echo "Expected 11 release assets, found ${#ASSETS[@]}"
+          if [[ ${#ASSETS[@]} -lt 5 ]]; then
+            echo "Expected at least Android + Windows release assets, found ${#ASSETS[@]}"
             printf '%s\n' "${ASSETS[@]}"
             exit 1
           fi
