@@ -69,11 +69,7 @@ jobs:
           BUILD_NUMBER: ${{ inputs.build_number }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "${GITHUB_REF_NAME}" != "dev" ]]; then
-            echo "正式构建只能从 dev 分支运行。"
-            exit 1
-          fi
-
+        
           if [[ ! "${BUILD_NUMBER}" =~ ^(0|[1-9][0-9]*)$ ]]; then
             echo "Build number 必须是 0 或正整数。"
             exit 1
