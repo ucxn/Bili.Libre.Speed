@@ -34,11 +34,11 @@ Android 手机、平板（Arm/×86-64）、iOS（含iPad）、MacOS、Windows（
 
 **搜索与设置：** 热搜/搜索历史/默认搜索词，投稿/番剧/直播间/用户搜索及排序筛选，WebDAV 设置备份/恢复，主题、图片质量、震动、高帧率、自动全屏/横屏、字幕/弹幕大小、亮度/音量等。
 
-### refactor
+### 重构
 
 <input type="checkbox" disabled> gRPC [wip]　
 <input type="checkbox" checked disabled> 用户界面　
-<input type="checkbox" checked disabled> 其他
+<input type="checkbox" checked disabled> 性能探索
 
 ## 下载
 
