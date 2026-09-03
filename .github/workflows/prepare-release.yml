@@ -51,8 +51,7 @@ jobs:
           git commit \
             --author="Reality <244209739+1-Reality@users.noreply.github.com>" \
             -m "prepare: release candidate @ ${SOURCE_SHA:0:12}" \
-            -m "Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>" \
-            -m "Co-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>"
+            -m $'Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>\nCo-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>'
           git push origin HEAD:upStream
 
           echo "Prepared from: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
