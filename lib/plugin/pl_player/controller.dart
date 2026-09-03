@@ -1,7 +1,7 @@
 import 'dart:async' show StreamSubscription, Timer;
 import 'dart:convert' show ascii, utf8;
 import 'dart:io' show Platform;
-import 'dart:math' show max, min;
+import 'dart:math' show min;
 import 'dart:ui' as ui;
 
 import 'package:PiliBro/common/assets.dart';
@@ -144,6 +144,10 @@ class PlPlayerController with BlockConfigMixin {
   int? _pgcType;
   VideoType _videoType = VideoType.ugc;
   int _heartDuration = 0;
+  int _lastPositionEventSecond = -1;
+  final Stopwatch _positionClock = Stopwatch()..start();
+  late final int _statsSampleTicks = _positionClock.frequency >> 1;
+  int _nextStatsSampleTick = 0;
   int? width;
   int? height;
 
@@ -283,10 +287,7 @@ class PlPlayerController with BlockConfigMixin {
 
   static bool get _isCurrVideoPage {
     final routing = Get.routing;
-    if (routing.route is! GetPageRoute) {
-      return false;
-    }
-    return _isVideoPage(routing.current);
+    return routing.route is GetPageRoute && _isVideoPage(routing.current);
   }
 
   static bool _isVideoPage(String routeName) {
@@ -401,7 +402,7 @@ class PlPlayerController with BlockConfigMixin {
 
   late final isRelative = Pref.useRelativeSlide;
   late final offset = isRelative
-      ? Pref.sliderDuration / 100
+      ? Pref.sliderDuration * 0.01
       : Pref.sliderDuration * 1000;
 
   num get sliderScale => isRelative ? durationInMilliseconds * offset : offset;
@@ -619,7 +620,7 @@ class PlPlayerController with BlockConfigMixin {
           ? Pref.preferCodecsCellular
           : Pref.preferCodecs;
       peakPreferCodecs = peakActive
-          ? ConnectivityUtils.effectiveCodecs(cachePreferCodecs!, profile)
+          ? ConnectivityUtils.effectiveCodecs()
           : null;
     }
   }
@@ -661,6 +662,9 @@ class PlPlayerController with BlockConfigMixin {
 
   // offline
   bool get isFileSource => dataSource is FileSource;
+
+  bool get _hasKnownVideoOutputSize =>
+      width != null && height != null && width! > 1 && height! > 1;
 
   late final _audioNormalization = Pref.audioNormalization;
   late final enableAudioNormalization =
@@ -718,6 +722,18 @@ class PlPlayerController with BlockConfigMixin {
       // _playbackSpeed.value = speed;
       // 初始化数据加载状态
       dataStatus.value = DataStatus.loading;
+      if (dataSource is FileSource) {
+        final missingMedia = dataSource.missingMedia(
+          audioOnly: onlyPlayAudio.value,
+        );
+        if (missingMedia != null) {
+          dataStatus.value = DataStatus.error;
+          SmartDialog.showToast(
+            '离线缓存缺少文件：${path.basename(missingMedia)}',
+          );
+          return;
+        }
+      }
       // 初始化全屏方向
       _isVertical = isVertical ?? false;
       _aid = aid;
@@ -892,6 +908,16 @@ class PlPlayerController with BlockConfigMixin {
     _videoController = await VideoController.create(
       player,
       configuration: VideoControllerConfiguration(
+        width: Platform.isWindows
+            ? (hwdec != null && !_hasKnownVideoOutputSize
+                  ? 1
+                  : (_hasKnownVideoOutputSize ? width : null))
+            : null,
+        height: Platform.isWindows
+            ? (hwdec != null && !_hasKnownVideoOutputSize
+                  ? 1
+                  : (_hasKnownVideoOutputSize ? height : null))
+            : null,
         enableHardwareAcceleration: hwdec != null,
         androidAttachSurfaceAfterVideoParameters: false,
         hwdec: hwdec,
@@ -932,6 +958,10 @@ class PlPlayerController with BlockConfigMixin {
       if (isAnim && superResolutionType.value != .disable) {
         await setShader();
       }
+    }
+
+    if (Platform.isWindows && _hasKnownVideoOutputSize) {
+      await _videoController?.setSize(width: width, height: height);
     }
 
     final profile = playbackNetworkProfile ?? ConnectivityUtils.current;
@@ -1045,6 +1075,7 @@ class PlPlayerController with BlockConfigMixin {
 
   List<StreamSubscription>? _subscriptions;
   final Set<ValueChanged<Duration>> _positionListeners = {};
+  final Set<ValueChanged<Duration>> _rawPositionListeners = {};
   final Set<ValueChanged<PlayerStatus>> _statusListeners = {};
 
   /// 播放事件监听
@@ -1052,6 +1083,19 @@ class PlPlayerController with BlockConfigMixin {
     assert(_subscriptions == null);
     final stream = player.stream;
     _subscriptions = [
+      if (Platform.isWindows && hwdec != null)
+        stream.videoParams.listen((params) {
+          final dw = params.dw;
+          final dh = params.dh;
+          if (dw == null || dh == null || dw < 1 || dh < 1) return;
+          final rotate = params.rotate ?? 0;
+          if (rotate == 0 || rotate == 180) {
+            _videoController?.setSize(width: dw, height: dh);
+          } else {
+            _videoController?.setSize(width: dh, height: dw);
+          }
+        }),
+
       /// playing
       stream.playing.listen((bool playing) {
         PlaybackStatsService.updatePlaying(playing, player.state.position);
@@ -1102,21 +1146,33 @@ class PlPlayerController with BlockConfigMixin {
 
       /// position
       stream.position.listen((Duration position) {
-        PlaybackStatsService.samplePosition(position);
-        final posInSeconds = position.inSeconds;
+        final ticks = _positionClock.elapsedTicks;
+        if (ticks >= _nextStatsSampleTick) {
+          _nextStatsSampleTick = ticks + _statsSampleTicks;
+          PlaybackStatsService.samplePosition(position);
+        }
 
-        if (posInSeconds != this.position.value) {
+        for (final element in _rawPositionListeners) {
+          element(position);
+        }
+
+        final positionUs = position.inMicroseconds;
+        final lastSecond = _lastPositionEventSecond;
+        final secondStartUs = lastSecond * Duration.microsecondsPerSecond;
+        if (lastSecond < 0 ||
+            positionUs < secondStartUs ||
+            positionUs >= secondStartUs + Duration.microsecondsPerSecond) {
+          final posInSeconds = positionUs ~/ Duration.microsecondsPerSecond;
+          _lastPositionEventSecond = posInSeconds;
           if (!isSeeking.value) {
             this.position.value = posInSeconds;
           }
 
           videoPlayerServiceHandler?.onPositionChange(position);
-
           makeHeartBeat(posInSeconds);
-        }
-
-        for (final element in _positionListeners) {
-          element(position);
+          for (final element in _positionListeners) {
+            element(position);
+          }
         }
       }),
       stream.duration.listen(updateDuration),
@@ -1159,7 +1215,22 @@ class PlPlayerController with BlockConfigMixin {
         })),
       stream.error.listen((String event) {
         if (dataSource is FileSource &&
-            event.startsWith("Failed to open file")) {
+            (event.startsWith('Failed to open file') ||
+                event.startsWith('Failed to open .') ||
+                event.startsWith('Cannot open') ||
+                event.startsWith('Can not open') ||
+                event.startsWith('error running'))) {
+          dataStatus.value = DataStatus.error;
+          EasyThrottle.throttle(
+            'controllerStream.localFileError',
+            const Duration(seconds: 3),
+            () => SmartDialog.showToast(
+              '离线缓存打开失败：${event.length > 160 ? '${event.substring(0, 160)}…' : event}',
+            ),
+          );
+          if (!kDebugMode) {
+            Utils.reportError('$event\n${player.state.playlist}');
+          }
           return;
         }
         if (isLive) {
@@ -1291,31 +1362,31 @@ class PlPlayerController with BlockConfigMixin {
   }) async {
     lastPlaybackSpeed = playbackSpeed;
 
-    final unchanged = speed == _videoPlayerController?.state.rate;
+    final player = _videoPlayerController;
+    final unchanged = speed == player?.state.rate;
     if (unchanged && !forceRecordSelection) {
       return;
     }
 
     PlaybackStatsService.changeSpeed(
       speed,
-      _videoPlayerController?.state.position ?? Duration.zero,
+      player?.state.position ?? Duration.zero,
       recordSelection: recordSelection,
       temporary: temporary,
     );
 
-    if (!unchanged) await _videoPlayerController?.setRate(speed);
+    if (!unchanged) await player?.setRate(speed);
     _playbackSpeed.value = speed;
-    if (danmakuController != null) {
+    final danmaku = danmakuController;
+    if (danmaku != null) {
       try {
-        DanmakuOption currentOption = danmakuController!.option;
-        double defaultDuration = currentOption.duration * lastPlaybackSpeed;
-        double defaultStaticDuration =
-            currentOption.staticDuration * lastPlaybackSpeed;
-        DanmakuOption updatedOption = currentOption.copyWith(
-          duration: defaultDuration / speed,
-          staticDuration: defaultStaticDuration / speed,
+        final currentOption = danmaku.option;
+        final speedScale = lastPlaybackSpeed / speed;
+        final updatedOption = currentOption.copyWith(
+          duration: currentOption.duration * speedScale,
+          staticDuration: currentOption.staticDuration * speedScale,
         );
-        danmakuController!.updateOption(updatedOption);
+        danmaku.updateOption(updatedOption);
       } catch (_) {}
     }
   }
@@ -1467,7 +1538,7 @@ class PlPlayerController with BlockConfigMixin {
         _lockedLongPressSpeed = playbackSpeed;
         HapticFeedback.mediumImpact();
         SmartDialog.showToast(
-          '${playbackSpeed} 倍将在松手后保持',
+          '$playbackSpeed 倍将在松手后保持',
           displayTime: const Duration(seconds: 1),
         );
       }
@@ -1527,8 +1598,9 @@ class PlPlayerController with BlockConfigMixin {
     if (!longPressStatus.value || !enableLongPressSlideSpeed || steps == 0) {
       return;
     }
+    final nextSpeed = playbackSpeed + steps * 0.25;
     await setPlaybackSpeed(
-      max(0.25, playbackSpeed + steps * 0.25),
+      nextSpeed > 0.25 ? nextSpeed : 0.25,
       recordSelection: false,
       temporary: true,
     );
@@ -1703,6 +1775,14 @@ class PlPlayerController with BlockConfigMixin {
   void removePositionListener(ValueChanged<Duration> listener) =>
       _positionListeners.remove(listener);
 
+  void addRawPositionListener(ValueChanged<Duration> listener) {
+    if (_playerCount == 0) return;
+    _rawPositionListeners.add(listener);
+  }
+
+  void removeRawPositionListener(ValueChanged<Duration> listener) =>
+      _rawPositionListeners.remove(listener);
+
   void addStatusLister(ValueChanged<PlayerStatus> listener) {
     if (_playerCount == 0) return;
     _statusListeners.add(listener);
@@ -1746,7 +1826,8 @@ class PlPlayerController with BlockConfigMixin {
 
     switch (type) {
       case .playing:
-        if (progress - _heartDuration >= 5) {
+        if (progress > _heartDuration &&
+            (progress & ~7) != (_heartDuration & ~7)) {
           _heartDuration = progress;
           return send();
         }
@@ -1853,6 +1934,7 @@ class PlPlayerController with BlockConfigMixin {
 
     _removeListeners();
     _positionListeners.clear();
+    _rawPositionListeners.clear();
     _statusListeners.clear();
     if (playerStatus.isPlaying) {
       WakelockPlus.disable();
@@ -1902,10 +1984,18 @@ class PlPlayerController with BlockConfigMixin {
     }
     if (videoShot case Success(:final response)) {
       showPreview.value = true;
-      previewIndex.value = max(
-        0,
-        (response.index.where((item) => item <= seconds).length - 2),
-      );
+      final index = response.index;
+      var low = 0;
+      var high = index.length;
+      while (low < high) {
+        final mid = (low + high) >> 1;
+        if (index[mid] <= seconds) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+      previewIndex.value = low > 1 ? low - 2 : 0;
     }
   }
 
@@ -1926,7 +2016,7 @@ class PlPlayerController with BlockConfigMixin {
   Future<void> takeScreenshot() async {
     SmartDialog.showToast('截图中');
     final time = DurationUtils.formatDuration(
-      positionInMilliseconds / 1000,
+      positionInMilliseconds * 0.001,
     ).replaceAll(':', '-');
     final image = await videoPlayerController?.screenshot();
     if (image != null) {
@@ -1952,7 +2042,7 @@ class PlPlayerController with BlockConfigMixin {
               padding: const EdgeInsets.only(right: 12),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: min(MediaQuery.widthOf(context) / 3, 350),
+                  maxWidth: min(MediaQuery.widthOf(context) * 0.3333333333333333, 350),
                 ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(

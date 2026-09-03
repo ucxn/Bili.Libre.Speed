@@ -93,6 +93,16 @@ Future<void> _initAppPath() async {
   appSupportDirPath = (await getApplicationSupportDirectory()).path;
 }
 
+void _showStartupBrandProfileAfterFirstFrame() {
+  final mid = GStorage.startupBrandProfileMid;
+  if (mid == null) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (Get.currentRoute == '/') {
+      Get.toNamed('/member?mid=$mid&startup_brand=1');
+    }
+  });
+}
+
 void _deferNonCriticalServicesUntilAfterFirstFrame() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(Future<void>(() async {
@@ -104,6 +114,7 @@ void _deferNonCriticalServicesUntilAfterFirstFrame() {
       await ConnectivityUtils.initialize();
       await TrafficStatsService.instance.initialize();
       await GStorage.migrateHeavyTelemetryFromVideoBox();
+      await RequestUtils.syncHistoryStatus();
     }));
   });
 }
@@ -150,7 +161,6 @@ void main() async {
 
   Request();
   Request.setCookie();
-  RequestUtils.syncHistoryStatus();
 
   SmartDialog.config.toast = SmartConfigToast(displayType: .onlyRefresh);
 
@@ -208,6 +218,7 @@ void main() async {
     await MyApp.initPlatformState();
   }
 
+  _showStartupBrandProfileAfterFirstFrame();
   _deferNonCriticalServicesUntilAfterFirstFrame();
 
   if (Pref.enableLog) {
@@ -300,7 +311,7 @@ class MyApp extends StatelessWidget {
       locale: const Locale("zh", "CN"),
       fallbackLocale: const Locale("zh", "CN"),
       supportedLocales: const [Locale("zh", "CN"), Locale("en", "US")],
-      initialRoute: GStorage.startupRoute,
+      initialRoute: '/',
       getPages: Routes.getPages,
       defaultTransition: Pref.pageTransition,
       builder: FlutterSmartDialog.init(
@@ -327,13 +338,14 @@ class MyApp extends StatelessWidget {
     final mediaQuery = MediaQuery.of(context);
     final textScaler = TextScaler.linear(Pref.defaultTextScale);
     if (uiScale != 1.0) {
+      final inverseUiScale = 1 / uiScale;
       child = MediaQuery(
         data: mediaQuery.copyWith(
           textScaler: textScaler,
-          size: mediaQuery.size / uiScale,
-          padding: tmpPadding ?? mediaQuery.padding / uiScale,
-          viewInsets: mediaQuery.viewInsets / uiScale,
-          viewPadding: tmpPadding ?? mediaQuery.viewPadding / uiScale,
+          size: mediaQuery.size * inverseUiScale,
+          padding: tmpPadding ?? mediaQuery.padding * inverseUiScale,
+          viewInsets: mediaQuery.viewInsets * inverseUiScale,
+          viewPadding: tmpPadding ?? mediaQuery.viewPadding * inverseUiScale,
           devicePixelRatio: mediaQuery.devicePixelRatio * uiScale,
         ),
         child: child!,

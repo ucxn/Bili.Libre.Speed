@@ -43,21 +43,21 @@ List<SettingsModel> get playSettings => [
     onTap: (context, setState) => Get.toNamed('/playSpeedSet'),
     leading: const Icon(Icons.speed_outlined),
     title: '倍速设置',
-    subtitle: '设置视频播放速度',
+    subtitle: '设置视频播放速度，高熵信息生活，节约时间就是延长生命！',
   ),
   if (Platform.isAndroid)
     NormalModel(
       onTap: _showAngleDegreesDialog,
       leading: const Icon(MdiIcons.angleAcute),
       title: '倾斜角度阈值',
-      getSubtitle: () => '当前:「${Pref.angleDegrees}°」',
+      getSubtitle: () => '当前:角度制「${Pref.angleDegrees}°」',
     ),
   const SwitchModel(
     title: '自动播放',
     subtitle: '进入详情页自动播放',
     leading: Icon(Icons.motion_photos_auto_outlined),
     setKey: SettingBoxKey.autoPlayEnable,
-    defaultVal: false,
+    defaultVal: true,
   ),
   const SwitchModel(
     title: '全屏显示锁定按钮',
@@ -107,14 +107,14 @@ List<SettingsModel> get playSettings => [
     NormalModel(
       title: '播放器音量',
       leading: const Icon(Icons.volume_up),
-      getSubtitle: () => '当前:「${Pref.playerVolume.toStringAsFixed(0)}%」',
+      getSubtitle: () => '当前:「${Pref.playerVolume.round()}%」',
       onTap: showPlayerVolumeDialog,
     )
   else
     NormalModel(
       title: '最高音量',
       leading: const Icon(Icons.volume_up),
-      getSubtitle: () => '当前:「${(Pref.maxVolume * 100).toStringAsFixed(0)}%」',
+      getSubtitle: () => '当前:「${(Pref.maxVolume * 100).round()}%」',
       onTap: _showMaxVolumeDialog,
     ),
   getVideoFilterSelectModel(
@@ -147,7 +147,7 @@ List<SettingsModel> get playSettings => [
     onTap: _showSubtitleDialog,
   ),
   NormalModel(
-    title: 'AI 字幕粉丝数阈值',
+    title: 'AI 字幕粉丝数限值',
     leading: const Icon(Icons.people_outline),
     getSubtitle: () => Pref.subtitleFollowerThreshold == 0
         ? '当前关闭；仅用于“静音时自动启用”偏好'
@@ -238,7 +238,7 @@ List<SettingsModel> get playSettings => [
       subtitle: '当弹幕开关开启时，小窗屏蔽弹幕以获得较好的体验',
       leading: Icon(CustomIcons.dm_off),
       setKey: SettingBoxKey.pipNoDanmaku,
-      defaultVal: false,
+      defaultVal: true,
     ),
   ],
   const SwitchModel(
@@ -259,7 +259,7 @@ List<SettingsModel> get playSettings => [
     subtitle: '展示同时在看人数',
     leading: Icon(Icons.people_outlined),
     setKey: SettingBoxKey.enableOnlineTotal,
-    defaultVal: false,
+    defaultVal: true,
   ),
   NormalModel(
     title: '默认全屏方向',
@@ -297,7 +297,7 @@ List<SettingsModel> get playSettings => [
     subtitle: '弹幕、字幕及部分设置中没有的设置除外',
     leading: Icon(Icons.video_settings_outlined),
     setKey: SettingBoxKey.tempPlayerConf,
-    defaultVal: false,
+    defaultVal: true,
   ),
 ];
 
@@ -330,7 +330,7 @@ Future<void> _showSubtitleFollowerThresholdDialog(
   await showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('AI 字幕粉丝数阈值'),
+      title: const Text('AI 字幕粉丝数粗判阈值'),
       content: TextFormField(
         autofocus: true,
         initialValue: value,
@@ -348,7 +348,7 @@ Future<void> _showSubtitleFollowerThresholdDialog(
           onPressed: () async {
             final threshold = int.tryParse(value);
             if (threshold == null) {
-              SmartDialog.showToast('请输入有效的粉丝数');
+              SmartDialog.showToast('输入域无效');
               return;
             }
             Get.back();
@@ -471,7 +471,7 @@ Future<void> _showMaxVolumeDialog(
     title: const Text('最高音量'),
     value: Pref.maxVolume * 100,
     onChanged: (rawValue) {
-      final maxVolume = (rawValue / 100).toPrecision(2);
+      final maxVolume = (rawValue * 0.01).toPrecision(2);
       if (Pref.desktopVolume > maxVolume) {
         GStorage.setting.put(SettingBoxKey.desktopVolume, maxVolume);
       }

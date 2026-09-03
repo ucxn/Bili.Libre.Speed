@@ -7,7 +7,7 @@ Future<CDNService?> showPlaybackCdnDialog(
   required CDNService current,
   required bool locked,
 }) {
-  final groups = CdnDiagnosticsService.groupedSnapshot();
+  final groups = CdnDiagnosticsService.groupedLatestSnapshot();
   final latest = groups.isEmpty ? null : groups.first;
   final byName = <String, Map>{};
   if (latest != null) {
@@ -32,10 +32,10 @@ Future<CDNService?> showPlaybackCdnDialog(
     final firstByteUs = (sample['firstByteUs'] as num?)?.toDouble();
     final parts = <String>[];
     if (bytesPerSecond != null && bytesPerSecond > 0) {
-      parts.add('${(bytesPerSecond / 1048576).toStringAsFixed(1)} MiB/s');
+      parts.add('${(bytesPerSecond / (1 << 20)).toStringAsFixed(1)} MiB/s');
     }
     if (firstByteUs != null && firstByteUs > 0) {
-      parts.add('首包 ${(firstByteUs / 1000).toStringAsFixed(1)} ms');
+      parts.add('首包 ${(firstByteUs * 0.001).toStringAsFixed(1)} ms');
     }
     return parts.isEmpty ? '上轮：有记录' : '上轮：${parts.join(' · ')}';
   }
