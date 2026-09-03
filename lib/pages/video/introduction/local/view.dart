@@ -9,6 +9,7 @@ import 'package:PiliBro/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliBro/pages/video/introduction/local/controller.dart';
 import 'package:PiliBro/plugin/pl_player/controller.dart';
 import 'package:PiliBro/plugin/pl_player/decoder_lab.dart';
+import 'package:PiliBro/plugin/pl_player/models/data_status.dart';
 import 'package:PiliBro/utils/duration_utils.dart';
 import 'package:PiliBro/utils/extension/num_ext.dart';
 import 'package:PiliBro/utils/path_utils.dart';
@@ -69,7 +70,7 @@ class _LocalIntroPanelState extends State<LocalIntroPanel>
 
   Widget _buildDecoderLab(ThemeData theme) {
     final player = PlPlayerController.instance;
-    if (player == null || !player.isFileSource) {
+    if (player == null || player.dataStatus.none || !player.isFileSource) {
       return const SizedBox.shrink();
     }
     final modes = player.decoderLabModes;
@@ -266,8 +267,8 @@ class _LocalIntroPanelState extends State<LocalIntroPanel>
                 Text(
                   '${result.modeLabel}：实际 ${result.effectiveSpeed.toStringAsFixed(2)}× '
                   '/ 设定 ${result.targetSpeed.toStringAsFixed(2)}× · '
-                  '${(result.wallTime.inMilliseconds / 1000).toStringAsFixed(2)}s '
-                  '推进 ${(result.mediaTime.inMilliseconds / 1000).toStringAsFixed(1)}s',
+                  '${(result.wallTime.inMilliseconds * 0.001).toStringAsFixed(2)}s '
+                  '推进 ${(result.mediaTime.inMilliseconds * 0.001).toStringAsFixed(1)}s',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

@@ -1,12 +1,17 @@
+import 'dart:async' show unawaited;
+
 import 'package:PiliBro/models/common/video/video_decode_type.dart';
 import 'package:PiliBro/models/video/play/url.dart';
 import 'package:PiliBro/pages/setting/widgets/select_dialog.dart'
     show CdnSpeedConfig, CdnSpeedMode, showCdnSpeedConfigDialog;
+import 'package:PiliBro/services/cdn_diagnostics_service.dart';
 import 'package:PiliBro/services/cdn_last_video_service.dart';
 import 'package:PiliBro/utils/accounts.dart';
 import 'package:PiliBro/utils/connectivity_utils.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:material_ui/material_ui.dart';
+
+final _trailingZerosRegExp = RegExp(r'0+$');
 
 typedef CdnSpeedSetup = ({CdnSpeedConfig? config, BaseItem? sample});
 
@@ -38,6 +43,11 @@ Future<CdnSpeedSetup?> showCdnSpeedSetupDialog(BuildContext context) async {
   if (!context.mounted || source == null || source == _CdnTestSource.skip) {
     return (config: null, sample: null);
   }
+
+  // The next user steps are enough time to remove the previous detailed
+  // snapshot before network measurement begins. Do not put this I/O on the
+  // speed-test critical path.
+  unawaited(CdnDiagnosticsService.clearLatest());
 
   if (source == _CdnTestSource.fixed) {
     final config = await showCdnSpeedConfigDialog(context);
@@ -107,14 +117,14 @@ Future<CdnSpeedSetup?> showCdnSpeedSetupDialog(BuildContext context) async {
       last.playUrl.timeLength ?? ((last.playUrl.dash?.duration ?? 0) * 1000);
   final bandwidth = sample.bandWidth ?? 0;
   final estimatedBytes = bandwidth > 0 && durationMs > 0
-      ? bandwidth * durationMs / 8000
+      ? bandwidth * durationMs * 0.000125
       : 0.0;
 
   final cellular =
       (await ConnectivityUtils.resolveForPlayback()).useCellularPreferences;
   if (!context.mounted) return null;
   final defaultMiB = estimatedBytes > 0
-      ? (estimatedBytes / 1048576).clamp(0.0, 512.0)
+      ? (estimatedBytes / (1 << 20)).clamp(0.0, 512.0)
       : (cellular ? 16.0 : 64.0);
   final config = await showDialog<CdnSpeedConfig>(
     context: context,
@@ -157,17 +167,17 @@ class _LastVideoSpeedConfigDialogState
     final total = widget.initialTotalMiB;
     totalController = TextEditingController(text: _number(total))
       ..addListener(_syncWarmupFromTotal);
-    warmupController = TextEditingController(text: _number(total / 8));
+    warmupController = TextEditingController(text: _number(total * 0.125));
   }
 
   String _number(double value) => value == value.roundToDouble()
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(3).replaceFirst(RegExp(r'0+$'), '');
+      ? value.round().toString()
+      : value.toStringAsFixed(3).replaceFirst(_trailingZerosRegExp, '');
 
   void _syncWarmupFromTotal() {
     final total = double.tryParse(totalController.text);
     if (total == null || !total.isFinite || total <= 0) return;
-    warmupController.text = _number(total / 8);
+    warmupController.text = _number(total * 0.125);
   }
 
   @override
@@ -221,8 +231,8 @@ class _LastVideoSpeedConfigDialogState
     final effectiveTotal = !k && total > 512 ? 512.0 : total;
     final effectiveWarmup = warmup.clamp(0.0, effectiveTotal * 0.999);
     Navigator.of(context).pop((
-      totalBytes: (effectiveTotal * 1048576).round(),
-      warmupBytes: (effectiveWarmup * 1048576).round(),
+      totalBytes: (effectiveTotal * (1 << 20)).round(),
+      warmupBytes: (effectiveWarmup * (1 << 20)).round(),
       cooldown: Duration(microseconds: (cooldown * 1000000).round()),
       mode: mode,
     ));
