@@ -237,7 +237,8 @@ class VideoDetailController extends GetxController
   final plPlayerController = PlPlayerController.getInstance()
     ..brightness.value = -1;
   bool get setSystemBrightness => plPlayerController.setSystemBrightness;
-  bool get removeSafeArea => plPlayerController.removeSafeArea;
+  bool removeSafeAreaFor({required bool portrait}) =>
+      plPlayerController.removeSafeAreaFor(portrait: portrait);
   double get uiScale => plPlayerController.uiScale;
 
   late VideoItem firstVideo;
@@ -342,7 +343,7 @@ class VideoDetailController extends GetxController
   bool _needAnimOnDimensionChanged(bool isVertical) {
     if (isFullScreen) {
       if (PlatformUtils.isMobile) {
-        plPlayerController.changeOrientation(isVertical: isVertical);
+        plPlayerController.onVideoOrientationChanged(isVertical);
       }
       return false;
     }
@@ -626,7 +627,7 @@ class VideoDetailController extends GetxController
 
   bool isPortrait = true;
 
-  bool get horizontalScreen => plPlayerController.horizontalScreen;
+  late final bool horizontalScreen = Pref.horizontalScreen;
 
   bool get showVideoSheet =>
       (!horizontalScreen && !isPortrait) || plPlayerController.isDesktopPip;
@@ -1128,12 +1129,51 @@ class VideoDetailController extends GetxController
     VideoItem? fallbackVideo;
     VideoItem? preferredVideo;
     final currentCodes = currentDecodeFormats.codes;
-    for (final video in videoList) {
-      if (video.quality.code != targetVideoQa) continue;
-      fallbackVideo ??= video;
-      if (currentCodes.any(video.codecs!.startsWith)) {
-        preferredVideo = video;
-        break;
+
+    if (Pref.desktopHighBitrateHevc &&
+        targetVideoQa >= Pref.desktopHighBitrateHevcQuality) {
+      var streamCount = 0;
+      VideoItem? avcVideo;
+      VideoItem? hevcVideo;
+      for (final video in videoList) {
+        if (video.quality.code != targetVideoQa) continue;
+        streamCount++;
+        fallbackVideo ??= video;
+        final codecs = video.codecs!;
+        if (preferredVideo == null && currentCodes.any(codecs.startsWith)) {
+          preferredVideo = video;
+        }
+        if (avcVideo == null &&
+            VideoDecodeFormatType.AVC.codes.any(codecs.startsWith)) {
+          avcVideo = video;
+        } else if (hevcVideo == null &&
+            VideoDecodeFormatType.HEVC.codes.any(codecs.startsWith)) {
+          hevcVideo = video;
+        }
+        if (streamCount >= 3 &&
+            preferredVideo != null &&
+            avcVideo != null &&
+            hevcVideo != null) {
+          break;
+        }
+      }
+      final avcBandwidth = avcVideo?.bandWidth;
+      if (streamCount >= 3 &&
+          currentDecodeFormats == VideoDecodeFormatType.AVC &&
+          avcBandwidth != null &&
+          avcBandwidth > Pref.desktopHighBitrateHevcThresholdBps &&
+          hevcVideo != null) {
+        currentDecodeFormats = VideoDecodeFormatType.HEVC;
+        preferredVideo = hevcVideo;
+      }
+    } else {
+      for (final video in videoList) {
+        if (video.quality.code != targetVideoQa) continue;
+        fallbackVideo ??= video;
+        if (currentCodes.any(video.codecs!.startsWith)) {
+          preferredVideo = video;
+          break;
+        }
       }
     }
     firstVideo = preferredVideo ?? fallbackVideo!;
