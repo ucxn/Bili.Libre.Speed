@@ -1,4 +1,4 @@
-一切为了提高倍速看视频、节约时间、增加信息熵、少即是多的世界思维了解服务！
+一切为了提高倍速看视频、节约时间、增加信息熵、少即是多的世界知识思维了解服务！
 
 <div align="center">
   <img width="200" height="200" src="assets/images/logo/logo.png" alt="PiliPlus">
@@ -20,12 +20,18 @@
 
 **离线解码实验室：** 在离线缓存界面增加离线解码测试，您可以在固定倍速、关闭弹幕、同一视频、同一起点播放相同时间，观察播放器实际推进的时间，得出实际倍速。您也可以指定某一编码器，看它在您的设备上性能到底如何。我们不关心复杂的实现，我们只关心该解码器在您的设备上到底能为您节约多少时间。测试方法非常朴素，就是可以选择不改变设置、轻微丢帧和激进丢帧，看流逝相同的物理时间，播放器时间能推进多少？<br>**UI 针对实验优化：** 抛弃所有入口必须统一的教科书形式主义、学院派，例如当前视频切换 CDN 变成单选题，避免复杂的排序。在不同的场景运用不同的选择偏好复杂度。
 
-**近乎完备的正交屏幕旋转设定：** 分为简单、高级和工程师模式。简单模式就已经可以指定方向、以及后续是旋转、跟随APP启动时、之后不再改变还是怎样，高级模式已经能够区分初始方向和旋转条件。甚至您可以根据程序的不同运行周期，规定进入时、退出时、初始化、触发条件、是否遵循安卓某 API，是否接受用户的方向锁定设置等。<br>**TV大屏适配：** 特制专门的遥控器模式，适合电视机、投影仪等大屏设备。
+**近乎完备的正交屏幕旋转设定：** 分为简单、高级和工程师模式。简单模式就已经可以指定方向、以及后续是旋转、跟随APP启动时、之后不再改变还是怎样，高级模式已经能够区分初始方向和旋转条件。甚至您可以根据程序的不同运行周期，规定进入时、退出时、初始化、触发条件、是否遵循安卓某 API，是否接受用户的方向锁定设置等。<br>**TV大屏适配：** 特制专门的遥控器模式，适合电视机、投影仪等大屏设备，适合通过遥控器操纵的横屏设备；特殊形态设备也可以自适应，折叠屏等设备也通过一定方法进行了判断，并且应用预设。不再为电视端专门交会员税。
 
 ## 适配平台
-Android 手机、平板（Arm/×86-64）、iOS（含iPad）、MacOS、Windows（AMD64 安装/绿色）、Linux。
+Android 手机、平板、TV（Arm/×86-64）、iOS（含iPad）、MacOS、Windows（AMD64 安装/绿色）、Linux。
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/piliplus.svg)](https://repology.org/project/piliplus/versions)
+## 🔗 友情链接
+小米 中兴 TP 华硕 华为 H3C 腾达 路由器 Web UI 增强测量组件&emsp;
+[![Bro-Stat](https://img.shields.io/badge/路由器-Stat__Max-00A381?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://github.com/ucxn/Bro-Stat)<br>
+兄弟项目，路由器接入HA 米家智能集成&nbsp;⇨&nbsp;<a href="https://github.com/ucxn/ZTE-Stat_HA" target="_blank"><img src="https://img.shields.io/badge/HACS-ZTE--Stat__Home%20Assistant-41BDF5?style=for-the-badge&logo=homeassistant&logoColor=white" alt="ZTE HACS"></a>&nbsp;&nbsp;&nbsp;<a href="https://www.bilibili.com/video/BV1PtR7B8ECC" target="_blank"><img src="https://img.shields.io/badge/Bilibili-%E8%A7%82%E7%9C%8B%E6%BC%94%E7%A4%BA%E8%A7%86%E9%A2%91-FF8EB3?style=for-the-badge&logo=bilibili&logoColor=white" alt="Bilibili Video"></a>
+
+[![Anti PCDN](https://img.shields.io/badge/Network-脚本推荐-FF4C00?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ucxn/Ban-PCDN_Anti-P2P)
+
 
 ## PiliBro 基础功能
 
@@ -44,13 +50,13 @@ Android 手机、平板（Arm/×86-64）、iOS（含iPad）、MacOS、Windows（
 
 ## 下载
 
-可从右侧 Releases 下载，也可拉取 `dev` 分支本地编译。Android 使用独立包名 `org.BroTech.Gege.piliBro`，可与上游 PiliPlus 并存；本分支 Release 使用固定签名，同签名的后续构建可直接覆盖升级，Apk内部版本号随时间单调递增至至多 10000次 提交。
+可从右侧 Releases 下载，也可拉取 `dev` 分支本地编译。Android 使用 `org.BroTech.Gege.piliBro`，可与三方应用并存；本分支 Release 使用固定签名，同签名的后续构建可直接覆盖升级，Apk内部版本号随时间单调递增至至多 10000次 提交。
 
 ## 声明与致谢
 
-本项目基于dom的 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 继续开发，仅用于学习和测试，请于下载后 24 小时内删除；所用 API 皆从官方网站收集，不涉及任何破解设计。本项目对倍速、网络、CDN 与播放策略，还有「未来10年不留遗憾的记录和历史」进行了更激进的修改，特别感谢原作者 [guozhigq/pilipala](https://github.com/guozhigq/pilipala)、上游 [orz12/PiliPalaX](https://github.com/orz12/PiliPalaX) 以及 PiliPlus 全体贡献者的开源工作。
+本项目仅用于学习和测试，请于下载后 24 小时内删除；所用 API 皆从官方网站收集，不涉及任何破解设计。本项目对倍速、网络、CDN 与播放策略，还有「未来10年不留遗憾的记录和历史」进行了更激进的修改，特别感谢伟大的[orz12/PiliPalaX](https://github.com/orz12/PiliPalaX) 、精神发源者[guozhigq/pilipala](https://github.com/guozhigq/pilipala)以及全体贡献者的工作。
 
-感谢 [@My-Responsitories](https://github.com/My-Responsitories) 等贡献者，以及 [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)、[flutter_meedu_videoplayer](https://github.com/zezo357/flutter_meedu_videoplayer)、[media-kit](https://github.com/media-kit/media-kit)、[dio](https://pub.dev/packages/dio) 等项目。
+感谢 [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)、[flutter_meedu_videoplayer](https://github.com/zezo357/flutter_meedu_videoplayer)、[media-kit](https://github.com/media-kit/media-kit)、[dio](https://pub.dev/packages/dio) 等项目。
 
 PiliBro，乾杯-( ゜- ゜)つロ
 
@@ -71,5 +77,10 @@ This project is strictly a fan-made modification and is not affiliated with, mai
 The simple proposition that a person's limited time is itself a resource worth respecting.
 
 ## Star History
-
-<a href="https://star-history.dera.page/#ucxn/Bili.Libre.Speed&Date"><picture><source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=ucxn/Bili.Libre.Speed&type=Date&theme=dark" /><source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=ucxn/Bili.Libre.Speed&type=Date" /><img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=ucxn/Bili.Libre.Speed&type=Date" /></picture></a>
+<a href="https://www.star-history.com/?repos=ucxn%2Fbili.libre.speed&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ucxn/bili.libre.speed&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ucxn/bili.libre.speed&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ucxn/bili.libre.speed&type=date&legend=top-left" />
+ </picture>
+</a>
