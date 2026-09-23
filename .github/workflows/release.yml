@@ -602,14 +602,14 @@ jobs:
 
           parts.append('''<div align="center">
 
-          <img alt="Xiaomi" src="https://img.shields.io/badge/小米-FF6900?style=for-the-badge&logo=xiaomi&logoColor=white" />
-          <img alt="OPPO" src="https://img.shields.io/badge/OPPO-2D9C3C?style=for-the-badge&logoColor=white" />
-          <img alt="vivo" src="https://img.shields.io/badge/vivo-415FFF?style=for-the-badge&logoColor=white" />
+          <img alt="Xiaomi" height="32" src="https://img.shields.io/badge/小米-FF6900?style=for-the-badge&logo=xiaomi&logoColor=white" />
+          <img alt="OPPO" src="https://img.shields.io/badge/-2D683D?style=for-the-badge&logo=oppo&logoColor=white&logoSize=auto" />
+          <img alt="vivo" src="https://img.shields.io/badge/-415FFF?style=for-the-badge&logo=vivo&logoColor=white&logoSize=auto" />
           <img alt="HUAWEI" src="https://img.shields.io/badge/HUAWEI-C7000B?style=for-the-badge&logo=huawei&logoColor=white" />
-          <img alt="HONOR" src="https://img.shields.io/badge/HONOR-111111?style=for-the-badge&logoColor=white" />
-          <img alt="Samsung" src="https://img.shields.io/badge/Samsung-1428A0?style=for-the-badge&logo=samsung&logoColor=white" />
+          <img alt="HONOR" src="https://img.shields.io/badge/-000000?style=for-the-badge&logo=honor&logoColor=white&logoSize=auto" />
+          <img alt="Samsung" src="https://img.shields.io/badge/%20-1428A0?style=for-the-badge&logo=samsung&logoColor=white&logoSize=auto" />
           <img alt="Google Pixel" src="https://img.shields.io/badge/Pixel-4285F4?style=for-the-badge&logo=google&logoColor=white" />
-          <img alt="nubia / REDMAGIC" height="18" src="https://upload.wikimedia.org/wikipedia/commons/f/f6/Nubia_logo.svg" />
+          <img alt="nubia/ REDMAGIC" height="18" src="https://upload.wikimedia.org/wikipedia/commons/f/f6/Nubia_logo.svg" />
 
           </div>''')
 
@@ -628,17 +628,27 @@ jobs:
 
           [![Intel icon](https://img.shields.io/badge/%20-0071C5?style=for-the-badge&logo=intel&logoColor=white)]({ax86}) [![Android x86](https://img.shields.io/badge/Android-x86版本-3DDC84?style=for-the-badge&logo=android&logoColor=white)]({ax86})''')
 
-          if files["ios"]:
-              ios = asset_url("ios")
-              parts.append(f'''iOS [版本下载]({ios})
+          win_setup = asset_url("windows_setup")
+          win_portable = asset_url("windows_portable")
+          laptop = f"https://raw.githubusercontent.com/{repo}/{tag_url}/.vscode/laptop.svg"
+          parts.append(f'''Windows x86_64 [下载]({win_setup})
 
-          [![Apple](https://img.shields.io/badge/Apple-000000?style=for-the-badge&logo=apple&logoColor=white)]({ios}) [![iPadOS](https://img.shields.io/badge/iPadOS-5E5CE6?style=for-the-badge&logo=apple&logoColor=white)]({ios})''')
+          <a href="{win_setup}"><img alt="Windows" height="28" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Unofficial_Windows_logo_variant_-_2002%E2%80%932012_%28Multicolored%29.svg" /></a> [![AMD](https://img.shields.io/badge/%20-ED1C24?style=for-the-badge&logo=amd&logoColor=white&logoSize=auto)]({win_portable}) <a href="{win_setup}"><img alt="Gaming laptop" height="42" src="{laptop}" /></a>''')
+
+          if files["mac"] or files["ios"] or files["linux_targz"]:
+              parts.append("---")
 
           if files["mac"]:
               mac = asset_url("mac")
               parts.append(f'''macOS [版本下载]({mac})
 
           [![macOS](https://img.shields.io/badge/macOS-桌面版本-555555?style=for-the-badge&logo=apple&logoColor=white)]({mac})''')
+
+          if files["ios"]:
+              ios = asset_url("ios")
+              parts.append(f'''iOS [版本下载]({ios})
+
+          [![Apple](https://img.shields.io/badge/Apple-000000?style=for-the-badge&logo=apple&logoColor=white)]({ios}) [![iPadOS](https://img.shields.io/badge/iPadOS-5E5CE6?style=for-the-badge&logo=apple&logoColor=white)]({ios})''')
 
           if files["linux_targz"]:
               targz = asset_url("linux_targz")
@@ -652,13 +662,6 @@ jobs:
           [![Debian 系](https://img.shields.io/badge/Debian系-A80030?style=for-the-badge&logo=debian&logoColor=white)]({deb}) [![Ubuntu / Mint](https://img.shields.io/badge/Ubuntu%20%2F%20Mint-适用-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)]({deb})
 
           [![RPM 系](https://img.shields.io/badge/RPM系-5B3FD0?style=for-the-badge&logoColor=white)]({rpm}) [![Fedora / openSUSE](https://img.shields.io/badge/Fedora%20%2F%20openSUSE-适用-3B82F6?style=for-the-badge&logo=fedora&logoColor=white)]({rpm})''')
-
-          win_setup = asset_url("windows_setup")
-          win_portable = asset_url("windows_portable")
-          laptop = f"https://raw.githubusercontent.com/{repo}/{tag_url}/.vscode/laptop.svg"
-          parts.append(f'''Windows x86_64 [下载]({win_setup})
-
-          <a href="{win_setup}"><img alt="Windows" height="28" src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Unofficial_Windows_logo_variant_-_2002%E2%80%932012_%28Multicolored%29.svg" /></a> [![AMD](https://img.shields.io/badge/%20-ED1C24?style=for-the-badge&logo=amd&logoColor=white&logoSize=auto)]({win_portable}) <a href="{win_setup}"><img alt="Gaming laptop" height="42" src="{laptop}" /></a>''')
 
           body = "\n\n".join(part.strip() for part in parts if part.strip()) + "\n"
           Path("release_body.md").write_text(body, encoding="utf-8")
