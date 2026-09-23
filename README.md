@@ -50,11 +50,11 @@ Android 手机、平板、TV（Arm/×86-64）、iOS（含iPad）、MacOS、Windo
 
 ## 下载
 
-可从右侧 Releases 下载，也可拉取 `dev` 分支本地编译。Android 使用 `org.BroTech.Gege.piliBro`，可与三方应用并存；本分支 Release 使用固定签名，同签名的后续构建可直接覆盖升级，Apk内部版本号随时间单调递增至至多 10000次 提交。
+可从下方 Releases区 下载，也可拉取 `dev` 分支本地编译。Android 使用 `org.BroTech.Gege.piliBro`，可与三方应用并存；本分支 Release 使用固定签名，同签名的后续构建可直接覆盖升级，Apk内部版本号随时间单调递增至至多 10000次 提交。
 
 ## 声明与致谢
 
-本项目仅用于学习和测试，请于下载后 24 小时内删除；所用 API 皆从官方网站收集，不涉及任何破解设计。本项目对倍速、网络、CDN 与播放策略，还有「未来10年不留遗憾的记录和历史」进行了更激进的修改，特别感谢伟大的[orz12/PiliPalaX](https://github.com/orz12/PiliPalaX) 、精神发源者[guozhigq/pilipala](https://github.com/guozhigq/pilipala)以及全体贡献者的工作。
+本项目仅用于学习和测试，请于下载后 24 小时内删除；所用 API 皆从官方网站收集，不涉及任何破解设计。本项目对倍速、网络、CDN 与播放策略，还有「未来10年不留遗憾的记录和历史」进行了更激进的大量重写，特别感谢伟大的[orz12/PiliPalaX](https://github.com/orz12/PiliPalaX) 、精神发源者[guozhigq/pilipala](https://github.com/guozhigq/pilipala)以及全体贡献者的工作。
 
 感谢 [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)、[flutter_meedu_videoplayer](https://github.com/zezo357/flutter_meedu_videoplayer)、[media-kit](https://github.com/media-kit/media-kit)、[dio](https://pub.dev/packages/dio) 等项目。
 
@@ -68,10 +68,9 @@ PiliBro，乾杯-( ゜- ゜)つロ
 
 其他合理场景还包括：在通勤、候车、课间等碎片时间快速处理已经收藏的视频；为需要反复复习的课程建立更符合个人节奏的观看方式；在较差网络、老旧硬件或资源有限的设备上减少无意义的卡顿和资源浪费；通过长期数据观察自己的注意力与观看习惯变化；对播放器交互、倍速算法、统计模型、缓冲策略、编码选择和跨平台适配进行学习与实验；在考研、考试准备或更多需要长期专注的阶段，用于学习效率管理与自律；仅通过私聊等非公开方式分享给现实生活中相识的挚友、亲人或家人，供共同学习、测试或个人使用；以及单纯因为珍惜自己的时间，用于仅供个人使用的私人设备，希望一件每天都要使用的软件能够真正服从于人的习惯，而非让人反过来适应软件预设的节奏：其边界效用在于节约自己宝贵的时间和生命。
 
-本项目无意建立独立的软件分发体系，也不鼓励以商业推广、广告捆绑、流量获利、批量转载或其他与上述用途明显无关的方式传播。上述内容主要用于说明项目的创作目的与作者认可的合理使用方式，不改变上游项目原有许可证及各原作者依法享有的权利。
+本项目无意建立独立的软件分发体系，也不鼓励以商业推广、广告捆绑、流量获利、批量转载或其他与上述用途明显无关的方式传播。上述内容主要用于说明项目的创作目的与作者认可的合理使用方式，不改变许可证及各创作者依法享有的权利。
 The open-source authors—whether associated with or unrelated to this matter—and I shall not be held liable for any consequences or disputes arising from the use of methods not recommended on the official website; the developers bear no legal responsibility.
 
-Most of the code included in this project remains the copyrighted work and intellectual property of its respective original authors and upstream contributors.
 It is provided here solely for non-commercial, educational, research, and transformative purposes.
 This project is strictly a fan-made modification and is not affiliated with, maintained by, authorized by, endorsed by, or sponsored by Bilibili or any other SaaS platform, website, or service provider.
 The simple proposition that a person's limited time is itself a resource worth respecting.
