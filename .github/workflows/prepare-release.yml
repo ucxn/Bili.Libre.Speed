@@ -32,7 +32,7 @@ jobs:
           rsync -a --delete \
             --exclude='.git/' \
             --exclude='README.md' \
-            --exclude='.github/workflows/' \
+            --exclude='.github' \
             "${RUNNER_TEMP}/release-candidate/" ./
 
       - name: 提交到 upStream
