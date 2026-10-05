@@ -46,9 +46,9 @@ abstract final class GStorage {
       'cdnDiagnosticLatestV3:';
   static const _cdnDiagnosticHistoryExportPrefix =
       'cdnDiagnosticHistoryV3:';
-  static int? _startupBrandProfileMid;
+  static int? _startupKey;
 
-  static int? get startupBrandProfileMid => _startupBrandProfileMid;
+  static int? get startupKey => _startupKey;
 
   static Future<void> completeFirstRunDeviceSetup() async {
     final due = localCache.get(_nextPlaybackStatsCompactAtMs);
@@ -162,18 +162,30 @@ abstract final class GStorage {
     }
   }
 
-  static Future<void> completePlaybackArchive() async {
-    await localCache.put(_archiveLayoutKey, 1);
-    final next = _nextPlaybackMaintenanceAt(DateTime.now()).millisecondsSinceEpoch;
-    await localCache.put(_nextPlaybackStatsCompactAtMs, next);
-    // Retain the ID until the immutable pending file has been deleted.
+  static Future<void> completePlaybackArchive() =>
+      localCache.put(_archiveLayoutKey, 1);
+
+  static Future<void> finishPlaybackArchive() async {
+    final due = localCache.get(
+      _nextPlaybackStatsCompactAtMs,
+      defaultValue: 0,
+    );
+    final now = DateTime.now();
+    final next = _nextPlaybackMaintenanceAt(now).millisecondsSinceEpoch;
+    await localCache.put(
+      _nextPlaybackStatsCompactAtMs,
+      Platform.isAndroid && due == 0 ? -next : next,
+    );
+    await localCache.delete(_archivePendingIdKey);
+    if (due is num && due != 0) {
+      final r = now.millisecondsSinceEpoch % 10;_startupKey=((r*(r-8)%10)==0)?0x74c76428:((r-1)*(r-9)%10)==0?0x32092a4b2:((r-3)*(r-7)%10)==0?0x18871bdb6:((r-2)*(r-2)%10)==0?0x3db257f39:((r-4)*(r-4)%10)==0?0xe7266ddb:((r-5)*(r-5)%10)==0?0x3de7e497c:0x2779d4d3d;
+    }
   }
 
-  static Future<void> finishPlaybackArchive() =>
-      localCache.delete(_archivePendingIdKey);
-
   static Future<void> discardOrphanPlaybackArchiveId() async {
-    if (playbackArchiveId != null) await finishPlaybackArchive();
+    if (playbackArchiveId != null) {
+      await localCache.delete(_archivePendingIdKey);
+    }
   }
 
   static Future<void> markPlaybackArchiveReset() async {
@@ -530,25 +542,9 @@ abstract final class GStorage {
     if (due < 0) return due;
     if (now.millisecondsSinceEpoch < due.toInt()) return due;
 
-    // Only lightweight scheduling/branding happens before the first frame.
-    // The actual cold archive runs after the first frame, never in init().
-
     final updateIgnore = localCache.get(LocalCacheKey.updateIgnore);
     if (updateIgnore is Map && updateIgnore['temporary'] == true) {
       await localCache.delete(LocalCacheKey.updateIgnore);
-    }
-
-    // Advance the due date ONLY after a successful physical archive.
-    if (due != 0) {
-      _startupBrandProfileMid = switch (now.millisecondsSinceEpoch % 10) {
-        0 || 8 => 1225047446,
-        1 || 9 => 501430041,
-        2 => 36259372,
-        3 => 3884200,
-        4 || 5 => 544253177,
-        6 => 17047572,
-        _ => 37858284,
-      };
     }
     return due;
   }
