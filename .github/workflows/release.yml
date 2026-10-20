@@ -536,7 +536,7 @@ jobs:
         if: ${{ inputs.tag != '' }}
         shell: pwsh
         run: |
-          & $env:RAR_EXE a -ma5 -m5 -r "PiliBro_windows_${{ env.version }}_x64_portable.rar" "Release/PiliBro-Win"
+          & $env:RAR_EXE a -ma5 -m5 -s -r "PiliBro_windows_${{ env.version }}_x64_portable.rar" "Release/PiliBro-Win"
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
