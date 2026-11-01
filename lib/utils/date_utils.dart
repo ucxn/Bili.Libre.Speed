@@ -1,3 +1,6 @@
+import 'package:PiliBro/models/common/time_display_mode.dart';
+import 'package:PiliBro/utils/hankou_time.dart';
+import 'package:PiliBro/utils/storage_pref.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 abstract final class DateFormatUtils {
@@ -8,6 +11,12 @@ abstract final class DateFormatUtils {
   static final longFormatDs = DateFormat('yyyy-MM-dd HH:mm:ss');
   static final only0_9 = DateFormat('yyyyMMddHHmmss');
 
+  /// 见 [Pref.timeDisplay]
+  static int display = Pref.timeDisplay;
+  static TimeDisplayMode get timeMode => TimeDisplayMode.values[display & 3];
+  static bool get hankou => display & 4 != 0;
+  static const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+
   static String dateFormat(
     int? time, {
     DateFormat? short,
@@ -17,8 +26,22 @@ abstract final class DateFormatUtils {
       return '';
     }
 
-    final now = DateTime.now();
-    final date = DateTime.fromMillisecondsSinceEpoch(time * 1000);
+    final date = _date(time);
+    final timeMode = DateFormatUtils.timeMode;
+    if (timeMode == TimeDisplayMode.absolute) return longFormatDs.format(date);
+    final now = _now;
+    if (timeMode == TimeDisplayMode.readable) {
+      final dayDiff = DateTime.utc(now.year, now.month, now.day)
+          .difference(DateTime.utc(date.year, date.month, date.day))
+          .inDays;
+      final hm = '${_twoDigits(date.hour)}:${_twoDigits(date.minute)}';
+      if (dayDiff < 1) return hm;
+      if (dayDiff == 1) return '昨天 $hm';
+      if (dayDiff < 7) return '周${_weekdays[date.weekday - 1]} $hm';
+      return now.year == date.year
+          ? _shortFormatD.format(date)
+          : longFormat.format(date);
+    }
     final diff = now.difference(date);
 
     final diffInMins = diff.inMinutes;
@@ -45,13 +68,25 @@ abstract final class DateFormatUtils {
 
   static String _twoDigits(int n) => n.toString().padLeft(2, '0');
 
+  /// 漢口特別市时间在微秒上换算，秒以下由格式化时截去
+  static DateTime _hankou(int us) =>
+      DateTime.fromMicrosecondsSinceEpoch(us + HankouTime.offsetUs(us), isUtc: true);
+
+  static DateTime _date(int time) => hankou
+      ? _hankou(time * 1000000)
+      : DateTime.fromMillisecondsSinceEpoch(time * 1000);
+
+  static DateTime get _now => hankou
+      ? _hankou(DateTime.now().microsecondsSinceEpoch)
+      : DateTime.now();
+
   static String chatFormat(int? time, {bool isHistory = false}) {
     if (time == null || time == 0) {
       return '';
     }
 
-    final now = DateTime.now();
-    final date = DateTime.fromMillisecondsSinceEpoch(time * 1000);
+    final now = _now;
+    final date = _date(time);
 
     final today = DateTime(now.year, now.month, now.day);
     final dateDay = DateTime(date.year, date.month, date.day);
@@ -75,7 +110,6 @@ abstract final class DateFormatUtils {
     if (time == null || time == 0) {
       return '';
     }
-    final date = DateTime.fromMillisecondsSinceEpoch(time * 1000);
-    return (format ?? longFormatD).format(date);
+    return (format ?? longFormatD).format(_date(time));
   }
 }
