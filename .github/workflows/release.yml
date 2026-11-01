@@ -349,7 +349,7 @@ jobs:
           cp -r ../build/linux/x64/release/bundle/* opt/PiliBro
           cp -r ../assets/linux/DEBIAN .
           cp ../assets/linux/org.BroTech.gege.pilibro.desktop usr/share/applications
-          cp ../assets/images/logo/logo.png usr/share/icons/hicolor/512x512/apps/pilibro.png
+          cp ../assets/linux/pilibro.png usr/share/icons/hicolor/512x512/apps/pilibro.png
           sed -i "2s/version_need_change/${{ env.version }}/g" DEBIAN/control
           SIZE_KB=$(du -s -b --apparent-size . | awk '{print int($1)}')
           SIZE_KB=$(($SIZE_KB - $(du -s -b --apparent-size DEBIAN | awk '{print int($1)}')))
@@ -373,7 +373,7 @@ jobs:
           mkdir -p "$SRC_DIR/bundle" "$SRC_DIR/assets"
           cp -r build/linux/x64/release/bundle/* "$SRC_DIR/bundle/"
           cp assets/linux/org.BroTech.gege.pilibro.desktop "$SRC_DIR/assets/org.BroTech.gege.pilibro.desktop"
-          cp assets/images/logo/logo.png "$SRC_DIR/assets/pilibro.png"
+          cp assets/linux/pilibro.png "$SRC_DIR/assets/pilibro.png"
           tar -zcvf "$RPM_BUILD_ROOT/SOURCES/pilibro-${{ env.version }}.tar.gz" -C "$PWD" "pilibro-${{ env.version }}"
           cat > "$RPM_BUILD_ROOT/SPECS/pilibro.spec" <<SPEC_EOF
           Name:           pilibro
@@ -435,8 +435,8 @@ jobs:
           cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
           cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/org.BroTech.gege.pilibro.desktop"
           cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/usr/share/applications/org.BroTech.gege.pilibro.desktop"
-          cp assets/images/logo/logo.png "$APPDIR/pilibro.png"
-          cp assets/images/logo/logo.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/pilibro.png"
+          cp assets/linux/pilibro.png "$APPDIR/pilibro.png"
+          cp assets/linux/pilibro.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/pilibro.png"
           cat > "$APPDIR/AppRun" <<'APPRUN_EOF'
           #!/bin/bash
           SELF=$(readlink -f "$0")
@@ -518,13 +518,9 @@ jobs:
         shell: pwsh
         run: lib/scripts/patch.ps1 windows
 
-      - name: Apply media_kit decoder lab patch
+      - name: media_kit native D3D11 renderer
         shell: pwsh
-        run: lib/scripts/patch_media_kit_decoder_lab.ps1
-
-      - name: Pin libmpv build with D3D11 zero-copy
-        shell: pwsh
-        run: lib/scripts/patch_media_kit_libmpv.ps1
+        run: lib/scripts/media_kit_windows_d3d11.ps1
 
       - name: Build Windows
         shell: pwsh
