@@ -44,7 +44,7 @@ on:
         default: "0"
         type: string
       release_notes:
-        description: "Release notes"
+        description: "Release notes（换行输入两个分号 ;; ，空一行输入 ;;;;）"
         required: false
         default: ""
         type: string
@@ -661,7 +661,8 @@ jobs:
               return base + quote(file.name, safe="") if file else ""
 
           parts = []
-          notes = os.environ.get("RELEASE_NOTES", "").strip()
+          # 手动运行界面只能单行输入：两个分号（半角或全角）当作换行
+          notes = os.environ.get("RELEASE_NOTES", "").replace(";;", "\n").replace("；；", "\n").strip()
           if notes:
               parts.append(notes)
 
