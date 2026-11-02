@@ -1,22 +1,28 @@
 name: 准备发布
-
 on:
   workflow_dispatch:
-
+    inputs:
+      title:
+        description: '提交标题（可选）'
+        required: false
+        type: string
+        default: ''
+      body:
+        description: '提交正文（可选；换行输入 ;; ，空一行输入 ;;;;）'
+        required: false
+        type: string
+        default: ''
 permissions:
   contents: write
-
 jobs:
   prepare:
     name: 准备发布
     runs-on: ubuntu-latest
-
     steps:
       - name: 迁出分支
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
       - name: 获取候选
         shell: bash
         run: |
@@ -24,7 +30,6 @@ jobs:
             https://github.com/1-Reality/BiliVideo-Lab.git \
             "${RUNNER_TEMP}/release-candidate"
           echo "SOURCE_SHA=$(git -C "${RUNNER_TEMP}/release-candidate" rev-parse HEAD)" >> "${GITHUB_ENV}"
-
       - name: 镜像版本
         shell: bash
         run: |
@@ -33,25 +38,42 @@ jobs:
             --exclude='/README.md' \
             --exclude='.github' \
             "${RUNNER_TEMP}/release-candidate/" ./
-
       - name: 提交回当前分支
         shell: bash
+        env:
+          TITLE_INPUT: ${{ inputs.title }}
+          BODY_INPUT: ${{ inputs.body }}
         run: |
           git config user.name "keil5-commits"
           git config user.email "keil510086@gmail.com"
-
           git add -A
           if git diff --cached --quiet; then
             echo "没有需要准备的新内容。"
             echo "Source: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
-
+          # 手动运行界面只能单行输入：两个分号（半角或全角）当作换行
+          BODY_INPUT="${BODY_INPUT//;;/$'\n'}"
+          BODY_INPUT="${BODY_INPUT//；；/$'\n'}"
+          CANDIDATE="prepare: release candidate @ ${SOURCE_SHA:0:12}"
+          COAUTHORS=$'Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>\nCo-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>'
+          if [[ -n "$TITLE_INPUT" && -n "$BODY_INPUT" ]]; then
+            COMMIT_TITLE="$TITLE_INPUT"
+            COMMIT_BODY="$BODY_INPUT"$'\n\n'"$COAUTHORS"
+          elif [[ -n "$TITLE_INPUT" ]]; then
+            COMMIT_TITLE="$TITLE_INPUT"
+            COMMIT_BODY="$CANDIDATE"$'\n\n'"$COAUTHORS"
+          elif [[ -n "$BODY_INPUT" ]]; then
+            COMMIT_TITLE="$CANDIDATE"
+            COMMIT_BODY="$BODY_INPUT"$'\n\n'"$COAUTHORS"
+          else
+            COMMIT_TITLE="$CANDIDATE"
+            COMMIT_BODY="$COAUTHORS"
+          fi
           git commit \
             --author="Reality <244209739+1-Reality@users.noreply.github.com>" \
-            -m "prepare: release candidate @ ${SOURCE_SHA:0:12}" \
-            -m $'Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>\nCo-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>'
+            -m "$COMMIT_TITLE" \
+            -m "$COMMIT_BODY"
           git push origin "HEAD:${GITHUB_REF_NAME}"
-
           echo "Prepared ${GITHUB_REF_NAME} from: 1-Reality/BiliVideo-Lab@${SOURCE_SHA}" >> "${GITHUB_STEP_SUMMARY}"
           echo "Preserved: README.md and .github/workflows/" >> "${GITHUB_STEP_SUMMARY}"
