@@ -41,13 +41,17 @@ $\color{red}{\textsf{进一步优化播放器性能表现：}}$ 研究了上游 
 $\color{blue}{\textsf{宽度调节：}}$ 现在支持“列表宽度调节”和“卡片边距与页面边距”，在设置里面搜索即可直达这些选项：边距越小则封面越大。  
 $\color{red}{\textsf{自定义进度条：}}$ 融合了B站原版、YouTube 两者的精华：现在，用户可以自定义进度条是往上弹起，还是和播放器属于同一位置？可以留出更大的高度来上下调节亮度、音量之类了。
 
+**创作中心：** 内置的浏览器允许自定义 User Agent，使得可以使用网页版投稿之类，方便将其作为主力 APP 使用。
+
 ## 适配平台
 Android 手机、平板、TV（Arm/×86-64）、iOS（含iPad）、MacOS、Windows（AMD64 安装/绿色）、Linux。
 ### 完全支持
 Android 手机（API28 + 64位）；Windows 10（实机4070笔记本+7940HX集显均直通），  
-Windows 11（老酷睿核显直通已测）：支持安装版和便携版，Win11 仅64位。
+Windows 11（老酷睿核显直通已测，不绿屏）：支持安装版和便携版，Win11 仅64位。
 #### 已支持
 优秀支持：<但非逐版测试> Android 旧手机（API 28-） Android 平板、Android 电视机/大屏/嵌入式/TV（及对应遥控操作逻辑）或 aarch32；  
+使用过 Android Studio，Mumu 模拟器，小米 10青春版，小米6，小米5c 之类的实机做过测试。
+
 良好支持：Windows 7 64位（需要打补丁，虚拟机已测），Windows 8，Windows 8.1（实机+nVidia亮机卡已测，直通，需补丁）  
 普通支持：Linux（网友有反馈）、iOS（iPad测、不保证每版测）、Android 32位和×86_64、Android 电视机/盒子
 #### 试验性
@@ -58,7 +62,8 @@ Windows XP 64位（小众），常见SP1的32位（未测[VxKex-FULL-Kernel](htt
 MacOS Intel和自研M芯片机型均未测。
 ### 具体来说：
 #### 经常使用
-Android 手机（16/16+，每天）、Windows 10 AMD64（频繁）
+Android 手机（16/16+，每天）、Windows 10 AMD64（频繁）  
+电脑主要只使用直通，安卓偶尔会混用 Media Code Embed 和普通 Media Code。
 #### 偶尔使用
 iOS、Android JIT Debug版
 
