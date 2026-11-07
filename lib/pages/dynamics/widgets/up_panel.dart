@@ -154,7 +154,7 @@ class _UpPanelState extends State<UpPanel> {
           height: 38,
           cacheWidth: 38.cacheSize(context),
           Assets.logo2,
-          color: Colors.white,
+          fit: BoxFit.cover,
         ),
       );
     } else {
