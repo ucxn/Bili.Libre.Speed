@@ -6,7 +6,12 @@ import 'package:PiliBro/common/widgets/dialog/simple_dialog_option.dart';
 import 'package:PiliBro/grpc/audio.dart';
 import 'package:PiliBro/grpc/bilibili/app/listener/v1.pb.dart'
     show
+        Author,
+        BKArcPart,
+        BKArchive,
+        BKStat,
         DetailItem,
+        PlayItem,
         PlayURLResp,
         PlaylistSource,
         PlayInfo,
@@ -21,7 +26,9 @@ import 'package:PiliBro/http/video.dart';
 import 'package:PiliBro/models/common/audio_normalization.dart';
 import 'package:PiliBro/models/common/network_profile.dart';
 import 'package:PiliBro/models/common/video/base_quality.dart';
+import 'package:PiliBro/models/common/video/video_type.dart';
 import 'package:PiliBro/models_new/download/bili_download_entry_info.dart';
+import 'package:PiliBro/models_new/video/video_detail/data.dart';
 import 'package:PiliBro/models/video/play/url.dart' as http_model show Volume;
 import 'package:PiliBro/pages/common/common_intro_controller.dart'
     show FavMixin;
@@ -98,6 +105,8 @@ class AudioController extends GetxController
   final fallbackCover = RxnString();
   final fallbackTitle = RxnString();
   bool _fallbackMetaRequested = false;
+  // 兜底列表来自 web view，gRPC Listener 服务对这类稿件不下发流地址。
+  bool _isFallbackPlaylist = false;
 
   bool _hasInit = false;
   @override
@@ -361,13 +370,15 @@ class AudioController extends GetxController
   }
 
   /// Listener/Playlist 只为公开投稿合集返回完整 DetailItem；私密稿件要么
-  /// 不在列表里，要么 arc.cover 为空。用带登录态的 wbi view 补一次元数据，
-  /// 只取封面和标题，不参与播放列表逻辑。
+  /// 整条不在列表里，要么 arc.cover 为空。用带登录态的 wbi view 补一次：
+  /// 既补封面/标题，也用 pages 重建播放列表，否则列表弹窗、上下首切换、
+  /// 分 P 连播都会因为 playlist 为 null 全部失效。
   Future<void> _fillFallbackMeta() async {
     if (!isUgc || _fallbackMetaRequested || isClosed) return;
     final hasCover = fallbackCover.value?.isNotEmpty == true;
     final hasTitle = fallbackTitle.value?.isNotEmpty == true;
-    if (hasCover && hasTitle) return;
+    // 透传已带齐封面和标题时仍要继续，否则 playlist 不会被重建。
+    if (hasCover && hasTitle && playlist != null) return;
     _fallbackMetaRequested = true;
     try {
       final res = await VideoHttp.videoIntro(bvid: IdUtils.av2bv(oid.toInt()));
@@ -378,6 +389,7 @@ class AudioController extends GetxController
         if (fallbackTitle.value?.isNotEmpty != true) {
           fallbackTitle.value = response.title;
         }
+        _fillFallbackPlaylist(response);
         // 没有 DetailItem 时系统媒体通知也拿不到封面，用详情数据补一次。
         if (audioItem.value == null) {
           videoPlayerServiceHandler?.onVideoDetailChange(
@@ -386,10 +398,80 @@ class AudioController extends GetxController
             hashCode.toString(),
           );
         }
+      } else {
+        // 接口返回业务错误（如风控）时允许后续重试，不要一次性锁死兜底。
+        _fallbackMetaRequested = false;
       }
     } catch (_) {
       _fallbackMetaRequested = false;
     }
+  }
+
+  /// 用 wbi view 的 pages 构造一个只含当前稿件的播放列表。
+  /// 这是 gRPC DetailItem 的内存对象，不参与网络请求；playIndex 依赖的
+  /// item.oid / item.subId / item.itemType / parts 都必须填好。
+  void _fillFallbackPlaylist(VideoDetailData detail) {
+    if (playlist != null) return;
+    final pages = detail.pages;
+    if (pages == null || pages.isEmpty) return;
+
+    final aid = detail.aid ?? oid.toInt();
+    final currCid = subId.firstOrNull ?? Int64(detail.cid ?? 0);
+    final owner = detail.owner;
+    final stat = detail.stat;
+    final parts = pages
+        .map(
+          (e) => BKArcPart(
+            oid: Int64(aid),
+            subId: Int64(e.cid ?? 0),
+            title: e.part ?? '',
+            duration: Int64(e.duration ?? 0),
+            page: e.page,
+          ),
+        )
+        .toList();
+    final item = DetailItem(
+      item: PlayItem(
+        itemType: itemType,
+        oid: Int64(aid),
+        subId: [currCid],
+      ),
+      arc: BKArchive(
+        oid: Int64(aid),
+        title: detail.title ?? fallbackTitle.value ?? '',
+        cover: detail.pic ?? fallbackCover.value ?? '',
+        desc: detail.desc,
+        duration: Int64(detail.duration ?? 0),
+        rid: detail.tid,
+        rname: detail.tname,
+        copyright: detail.copyright,
+        publish: Int64(detail.pubdate ?? 0),
+        displayedOid: detail.bvid,
+      ),
+      parts: parts,
+      owner: owner == null
+          ? null
+          : Author(
+              mid: Int64(owner.mid ?? 0),
+              name: owner.name,
+              avatar: owner.face,
+            ),
+      stat: BKStat(
+        view: stat?.view,
+        like: stat?.like,
+        coin: stat?.coin.toInt(),
+        favourite: stat?.favorite,
+        reply: stat?.reply,
+        share: stat?.share,
+      ),
+    );
+    playlist = [item];
+    index = 0;
+    _isFallbackPlaylist = true;
+    // 兜底列表没有服务端分页游标，避免 loadNext 再发一次无意义的请求。
+    _prev = null;
+    _next = null;
+    _updateCurrItem(item);
   }
 
   Future<void> _queryPlayList({
@@ -421,6 +503,7 @@ class AudioController extends GetxController
           this.index = index;
           _updateCurrItem(response.list[index]);
           playlist = response.list;
+          _isFallbackPlaylist = false;
         }
         final item = audioItem.value;
         if (item == null || item.arc.cover.isEmpty) {
@@ -439,9 +522,12 @@ class AudioController extends GetxController
         }
       }
     } else {
-      res.toast();
       if (isInit) {
         await _fillFallbackMeta();
+      }
+      // 私密稿件已用 wbi view 完整补齐时，不再弹 gRPC 的错误提示。
+      if (!isInit || playlist == null) {
+        res.toast();
       }
     }
   }
@@ -464,18 +550,31 @@ class AudioController extends GetxController
     _queryingPlayUrl = true;
     try {
       _querySponsorBlock();
+      // 私密稿件不在 gRPC Listener 的公开数据里，别再发必然失败的请求
+      if (_isFallbackPlaylist) {
+        final ok = await _queryWebPlayUrl(autoplay: autoplay);
+        if (!ok) {
+          SmartDialog.showToast('获取播放地址失败');
+        }
+        return ok;
+      }
       final res = await AudioGrpc.audioPlayUrl(
         itemType: itemType,
         oid: oid,
         subId: subId,
       );
-      if (res case Success(:final response)) {
+      if (res case Success(:final response)
+          when response.playerInfo.isNotEmpty) {
         await _onPlay(response, autoplay: autoplay);
         return true;
-      } else {
-        res.toast();
-        return false;
       }
+      if (await _queryWebPlayUrl(autoplay: autoplay)) {
+        return true;
+      }
+      if (res case Error()) {
+        res.toast();
+      }
+      return false;
     } finally {
       _queryingPlayUrl = false;
       if (_pendingNetworkReload) {
@@ -483,6 +582,51 @@ class AudioController extends GetxController
         await _reloadForNetworkPolicy();
       }
     }
+  }
+
+  /// web wbi playurl 兜底取流。私密稿件（state=-50）在 Listener 服务里没有
+  /// playerInfo，但 web 接口带登录态仍能正常返回 dash.audio。
+  Future<bool> _queryWebPlayUrl({bool autoplay = true}) async {
+      final res = await VideoHttp.videoUrl(
+        bvid: IdUtils.av2bv(oid.toInt()),
+        cid: (subId.firstOrNull ?? oid).toInt(),
+        qn: 80,
+        tryLook: !isLogin && Pref.p1080,
+        videoType: VideoType.ugc,
+      );
+      if (res case Success(:final response)) {
+        final audios = response.dash?.audio;
+        if (audios != null && audios.isNotEmpty) {
+          final audio = VideoUtils.findTargetAudio(
+            audios,
+            Pref.defaultAudioQa,
+          );
+          final url = VideoUtils.getCdnUrl(audio.playUrls, isAudio: true);
+          if (_start == null) position.value = 0;
+          await _onOpenMedia(
+            url,
+            ua: BrowserUa.pc,
+            referer: HttpString.baseUrl,
+            autoplay: autoplay,
+          );
+          return true;
+        }
+        final durls = response.durl;
+        if (durls != null && durls.isNotEmpty) {
+          final url = durls.first.url;
+          if (url != null && url.isNotEmpty) {
+            if (_start == null) position.value = 0;
+            await _onOpenMedia(
+              url,
+              ua: BrowserUa.pc,
+              referer: HttpString.baseUrl,
+              autoplay: autoplay,
+            );
+            return true;
+          }
+        }
+      }
+    return false;
   }
 
   Future<void> _onPlay(PlayURLResp data, {bool autoplay = true}) async {
