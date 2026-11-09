@@ -74,6 +74,8 @@ class AudioPage extends StatefulWidget {
     String? audioUrl,
     int? extraId,
     String? bvid,
+    String? cover,
+    String? title,
     bool off = false,
   }) {
     final args = {
@@ -87,6 +89,8 @@ class AudioPage extends StatefulWidget {
       'audioUrl': ?audioUrl,
       'extraId': ?extraId,
       'bvid': ?bvid,
+      'cover': ?cover,
+      'title': ?title,
     };
     PipOverlayService.close();
     AudioPlaybackSession.prepare(args);
@@ -158,12 +162,12 @@ class _AudioPageState extends State<AudioPage> {
       if (!_relatedOpen || !_controller.isUgc) return;
       final currentBvid = IdUtils.av2bv(_controller.oid.toInt());
       if (related.bvid != currentBvid) {
-        related.bvid = currentBvid;
-        related.queryData();
+        related..bvid = currentBvid
+        ..queryData();
       }
     });
-    related.bvid = bvid;
-    related.queryData();
+    related..bvid = bvid
+    ..queryData();
     _relatedOpen = true;
     showModalBottomSheet(
       context: context,
@@ -1197,7 +1201,11 @@ class _AudioPageState extends State<AudioPage> {
         );
       }
       if (audioItem != null) {
-        final cover = audioItem.arc.cover.http2https;
+        String cover = audioItem.arc.cover;
+        if (cover.isEmpty) {
+          cover = _controller.fallbackCover.value ?? '';
+        }
+        cover = cover.http2https;
         return Column(
           children: [
             Expanded(
@@ -1303,7 +1311,51 @@ class _AudioPageState extends State<AudioPage> {
           ],
         );
       }
-      return const SizedBox.shrink();
+
+      // 私密稿件不在 Listener/Playlist 列表中时，用透传或详情接口补回的
+      // 元数据至少把封面和标题显示出来，避免整块信息区空白。
+      final fallbackCover = _controller.fallbackCover.value?.http2https;
+      final fallbackTitle = _controller.fallbackTitle.value;
+      if ((fallbackCover == null || fallbackCover.isEmpty) &&
+          (fallbackTitle == null || fallbackTitle.isEmpty)) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: ListView(
+                padding: .zero,
+                shrinkWrap: true,
+                physics: platformClampingPhysics,
+                children: [
+                  if (fallbackCover != null && fallbackCover.isNotEmpty)
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => PageUtils.imageView(
+                          imgList: [SourceModel(url: fallbackCover)],
+                        ),
+                        child: NetworkImgLayer(
+                          src: fallbackCover,
+                          width: 170,
+                          height: 170,
+                          cacheWidth: false,
+                        ),
+                      ),
+                    ),
+                  if (fallbackTitle != null && fallbackTitle.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    SelectionText(
+                      fallbackTitle,
+                      style: const TextStyle(height: 1.7, fontSize: 16),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
     });
   }
 }

@@ -93,6 +93,12 @@ class AudioController extends GetxController
 
   final audioItem = Rxn<DetailItem>();
 
+  /// Listener/Playlist 基于公开投稿列表，私密稿件（state=-50）可能整条缺失
+  /// 或下发空封面。这里保存透传 / 详情接口补回的元数据，供信息区兜底。
+  final fallbackCover = RxnString();
+  final fallbackTitle = RxnString();
+  bool _fallbackMetaRequested = false;
+
   bool _hasInit = false;
   @override
   Player? player;
@@ -184,6 +190,8 @@ class AudioController extends GetxController
   void onInit() {
     super.onInit();
     final Map<String, dynamic> args = launchArguments ?? Get.arguments;
+    fallbackCover.value = args['cover'] as String?;
+    fallbackTitle.value = args['title'] as String?;
     final offline = args['offlineEntry'] as BiliDownloadEntryInfo?;
     oid = Int64(offline?.avid ?? args['oid']);
     final id = args['id'];
@@ -352,6 +360,38 @@ class AudioController extends GetxController
     );
   }
 
+  /// Listener/Playlist 只为公开投稿合集返回完整 DetailItem；私密稿件要么
+  /// 不在列表里，要么 arc.cover 为空。用带登录态的 wbi view 补一次元数据，
+  /// 只取封面和标题，不参与播放列表逻辑。
+  Future<void> _fillFallbackMeta() async {
+    if (!isUgc || _fallbackMetaRequested || isClosed) return;
+    final hasCover = fallbackCover.value?.isNotEmpty == true;
+    final hasTitle = fallbackTitle.value?.isNotEmpty == true;
+    if (hasCover && hasTitle) return;
+    _fallbackMetaRequested = true;
+    try {
+      final res = await VideoHttp.videoIntro(bvid: IdUtils.av2bv(oid.toInt()));
+      if (res case Success(:final response)) {
+        if (fallbackCover.value?.isNotEmpty != true) {
+          fallbackCover.value = response.pic;
+        }
+        if (fallbackTitle.value?.isNotEmpty != true) {
+          fallbackTitle.value = response.title;
+        }
+        // 没有 DetailItem 时系统媒体通知也拿不到封面，用详情数据补一次。
+        if (audioItem.value == null) {
+          videoPlayerServiceHandler?.onVideoDetailChange(
+            response,
+            (subId.firstOrNull ?? oid).toInt(),
+            hashCode.toString(),
+          );
+        }
+      }
+    } catch (_) {
+      _fallbackMetaRequested = false;
+    }
+  }
+
   Future<void> _queryPlayList({
     bool isInit = false,
     bool isLoadPrev = false,
@@ -382,6 +422,10 @@ class AudioController extends GetxController
           _updateCurrItem(response.list[index]);
           playlist = response.list;
         }
+        final item = audioItem.value;
+        if (item == null || item.arc.cover.isEmpty) {
+          await _fillFallbackMeta();
+        }
       } else if (isLoadPrev) {
         _prev = response.reachStart ? null : response.paginationReply.prev;
         if (response.list.isNotEmpty) {
@@ -396,6 +440,9 @@ class AudioController extends GetxController
       }
     } else {
       res.toast();
+      if (isInit) {
+        await _fillFallbackMeta();
+      }
     }
   }
 
