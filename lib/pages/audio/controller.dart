@@ -1055,20 +1055,25 @@ class AudioController extends GetxController
     return player?.playOrPause();
   }
 
+  bool _playFallbackPart({required bool isNext}) {
+    final parts = audioItem.value?.parts;
+    if (parts == null || parts.length < 2) return false;
+    final curr = subId.firstOrNull;
+    final currIndex = parts.indexWhere((e) => e.subId == curr);
+    if (currIndex < 0) return false;
+    final target = currIndex + (isNext ? 1 : -1);
+    if (target < 0 || target >= parts.length) return false;
+    playIndex(0, subId: [parts[target].subId]);
+    return true;
+  }
+
   bool playPrev() {
     if (_offlineEntries case final entries?) {
       if (_offlineIndex <= 0) return false;
       playLocalIndex(_offlineIndex - 1);
       return true;
     }
-    if (index != null && playlist != null && player != null) {
-      final prev = index! - 1;
-      if (prev >= 0) {
-        playIndex(prev);
-        return true;
-      }
-    }
-    return false;
+    return _playFallbackPart(isNext: false);
   }
 
   bool playNext({bool nextPart = false}) {
@@ -1103,6 +1108,10 @@ class AudioController extends GetxController
           }
         }
       }
+    }
+    // 自动连播（nextPart）已有自己的分 P 切换路径，不重复处理
+    if (!nextPart) {
+      return _playFallbackPart(isNext: true);
     }
     if (index != null && playlist != null && player != null) {
       final next = index! + 1;
