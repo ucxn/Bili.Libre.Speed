@@ -9,6 +9,7 @@ import 'package:PiliBro/common/widgets/dialog/dialog.dart';
 import 'package:PiliBro/common/widgets/dialog/simple_dialog_option.dart';
 import 'package:PiliBro/common/widgets/flutter/list_tile.dart';
 import 'package:PiliBro/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliBro/services/download/download_service.dart';
 import 'package:PiliBro/services/logger.dart';
 import 'package:PiliBro/services/playback_stats_service.dart';
 import 'package:PiliBro/services/traffic_stats_service.dart';
@@ -40,6 +41,7 @@ class AboutPage extends StatefulWidget {
 class _AboutPageState extends State<AboutPage> {
   final currentVersion = BuildConfig.displayVersionName;
   RxString cacheSize = ''.obs;
+  final offlineSize = ''.obs;
 
   late int _pressCount = 0;
 
@@ -47,11 +49,18 @@ class _AboutPageState extends State<AboutPage> {
   void initState() {
     super.initState();
     getCacheSize();
+    final ds = Get.find<DownloadService>();
+    ds.waitForInitialization.then((_) {
+      final (v, a) = ds.usage;
+      final t = v + a;
+      offlineSize.value = '${t.formatSize}${t < 1024 ? '' : 'iB'}';
+    });
   }
 
   @override
   void dispose() {
     cacheSize.close();
+    offlineSize.close();
     super.dispose();
   }
 
@@ -122,7 +131,7 @@ class _AboutPageState extends State<AboutPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '使用Flutter开发的B站第三方客户端',
+                  '使用Flutter开发的多功能娱乐、工具、网络三合一客户端',
                   style: TextStyle(color: outline),
                   semanticsLabel: '与你一起，发现不一样的世界',
                 ),
@@ -185,7 +194,7 @@ Commit Hash: ${BuildConfig.commitHash}''',
               'https://pages.goofish.com/sharexy?userid=2216485229713&bft=personal&bfp',
             ),
             leading: const Icon(Icons.storefront_outlined),
-            title: const Text('影像 音频 闲鱼小铺（点我交流经验技术）'),
+            title: const Text('影像音频 鱼小铺（点我交流经验技术）'),
             trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
           ),
           ListTile(
@@ -242,10 +251,10 @@ Commit Hash: ${BuildConfig.commitHash}''',
               }
             },
             leading: const Icon(Icons.delete_outline),
-            title: const Text('清除缓存'),
+            title: Obx(() => Text('清除缓存（${cacheSize.value}）')),
             subtitle: Obx(
               () => Text(
-                '图片及网络缓存 ${cacheSize.value}',
+                '其中：离线下载占用闪存：${offlineSize.value}',
                 style: subTitleStyle,
               ),
             ),
