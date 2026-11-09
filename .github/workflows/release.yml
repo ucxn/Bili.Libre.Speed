@@ -431,10 +431,11 @@ jobs:
           wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           APPDIR="PiliBro.AppDir"
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/metainfo" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
           cp -r build/linux/x64/release/bundle/* "$APPDIR/usr/bin/"
-          cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/org.BroTech.gege.pilibro.desktop"
-          cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/usr/share/applications/org.BroTech.gege.pilibro.desktop"
+          cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/org.brotech.gege.pilibro.desktop"
+          cp assets/linux/org.BroTech.gege.pilibro.desktop "$APPDIR/usr/share/applications/org.brotech.gege.pilibro.desktop"
+          cp assets/linux/org.brotech.gege.pilibro.appdata.xml "$APPDIR/usr/share/metainfo/org.brotech.gege.pilibro.appdata.xml"
           cp assets/linux/pilibro.png "$APPDIR/pilibro.png"
           cp assets/linux/pilibro.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/pilibro.png"
           cat > "$APPDIR/AppRun" <<'APPRUN_EOF'
