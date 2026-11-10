@@ -44,8 +44,8 @@ jobs:
           TITLE_INPUT: ${{ inputs.title }}
           BODY_INPUT: ${{ inputs.body }}
         run: |
-          git config user.name "keil5-commits"
-          git config user.email "keil510086@gmail.com"
+          git config user.name "晚橘"
+          git config user.email "noreply@anthropic.com"
           git add -A
           if git diff --cached --quiet; then
             echo "没有需要准备的新内容。"
@@ -56,7 +56,7 @@ jobs:
           BODY_INPUT="${BODY_INPUT//;;/$'\n'}"
           BODY_INPUT="${BODY_INPUT//；；/$'\n'}"
           CANDIDATE="prepare: release candidate @ ${SOURCE_SHA:0:12}"
-          COAUTHORS=$'Co-authored-by: 哥哥科技 <175325443+ucxn@users.noreply.github.com>\nCo-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>'
+          COAUTHORS=$'Co-authored-by: Reality <244209739+1-Reality@users.noreply.github.com>\nCo-authored-by: boli0301 <182537019+boli0301@users.noreply.github.com>'
           if [[ -n "$TITLE_INPUT" && -n "$BODY_INPUT" ]]; then
             COMMIT_TITLE="$TITLE_INPUT"
             COMMIT_BODY="$BODY_INPUT"$'\n\n'"$COAUTHORS"
@@ -71,7 +71,7 @@ jobs:
             COMMIT_BODY="$COAUTHORS"
           fi
           git commit \
-            --author="Reality <244209739+1-Reality@users.noreply.github.com>" \
+            --author="哥哥科技 <175325443+ucxn@users.noreply.github.com>" \
             -m "$COMMIT_TITLE" \
             -m "$COMMIT_BODY"
           git push origin "HEAD:${GITHUB_REF_NAME}"
