@@ -70,7 +70,7 @@ List<SettingsModel> get playSettings => [
     subtitle: '进入详情页自动播放',
     leading: Icon(Icons.motion_photos_auto_outlined),
     setKey: SettingBoxKey.autoPlayEnable,
-    defaultVal: true,
+    defaultVal: false,
   ),
   const SwitchModel(
     title: '评论区进入不自动播放',
@@ -130,7 +130,7 @@ List<SettingsModel> get playSettings => [
     subtitle: '相对减少手动播放加载时间',
     leading: Icon(Icons.play_circle_outlined),
     setKey: SettingBoxKey.preInitPlayer,
-    defaultVal: true,
+    defaultVal: false,
   ),
   const SwitchModel(
     title: '滑动跳转预览视频缩略图',
