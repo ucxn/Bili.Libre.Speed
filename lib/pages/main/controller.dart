@@ -72,7 +72,7 @@ class MainController extends GetxController
   @override
   void onInit() {
     super.onInit();
-    Update.onLaunch();
+    //Update.onLaunch();
 
     setNavBarConfig();
 

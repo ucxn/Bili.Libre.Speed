@@ -83,10 +83,10 @@ class DynamicPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-              child: authorWidget,
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            //   child: authorWidget,
+            // ),
             if (item.modules.moduleDispute case final moduleDispute?)
               _buildDispute(theme, moduleDispute),
             ...dynContent(
@@ -107,7 +107,7 @@ class DynamicPanel extends StatelessWidget {
                     theme: theme,
                     items: items,
                   ),
-              ActionPanel(item: item),
+              //ActionPanel(item: item),
               if (item.modules.moduleFold case final moduleFold?) ...[
                 Divider(
                   height: 1,

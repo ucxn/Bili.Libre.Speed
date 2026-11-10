@@ -144,7 +144,7 @@ class _AboutPageState extends State<AboutPage> {
             ),
           ),
           ListTile(
-            onTap: () => Update.checkUpdate(false),
+            //onTap: () => Update.checkUpdate(false),
             onLongPress: () => Utils.copyText(currentVersion),
             onSecondaryTap: PlatformUtils.isMobile
                 ? null
@@ -190,31 +190,10 @@ Commit Hash: ${BuildConfig.commitHash}''',
               trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
             ),
           ListTile(
-            onTap: () => PageUtils.launchURL(
-              'https://pages.goofish.com/sharexy?userid=2216485229713&bft=personal&bfp',
-            ),
-            leading: const Icon(Icons.storefront_outlined),
-            title: const Text('影像音频 鱼小铺（点我交流经验技术）'),
-            trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
-          ),
-          ListTile(
             onTap: () =>
                 PageUtils.launchURL('${Constants.sourceCodeUrl}/issues'),
             leading: const Icon(Icons.feedback_outlined),
             title: const Text('问题反馈'),
-            trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
-          ),
-          ListTile(
-            onTap: () => Get.toNamed(
-              '/webview',
-              parameters: {
-                'url': 'https://www.goofish.com/personal?userId=2216485229713',
-                'uaType': 'pc',
-              },
-              arguments: const {'inApp': true},
-            ),
-            leading: const Icon(Icons.favorite_rounded, color: Colors.pink),
-            title: const Text('支持开发者'),
             trailing: Icon(Icons.arrow_forward, size: 16, color: outline),
           ),
           ListTile(

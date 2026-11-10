@@ -280,18 +280,18 @@ List<SettingsModel> get extraSettings => [
     leading: const Icon(Icons.delete_outlined),
     onTap: _showCacheDialog,
   ),
-  SwitchModel(
-    title: '检查更新',
-    subtitle: '每次启动时检查是否需要更新',
-    leading: const Icon(Icons.system_update_alt),
-    setKey: SettingBoxKey.autoUpdate,
-    defaultVal: true,
-    onChanged: (val) {
-      if (val) {
-        Update.checkUpdate(false);
-      }
-    },
-  ),
+  // SwitchModel(
+  //   title: '检查更新',
+  //   subtitle: '每次启动时检查是否需要更新',
+  //   leading: const Icon(Icons.system_update_alt),
+  //   setKey: SettingBoxKey.autoUpdate,
+  //   defaultVal: true,
+  //   onChanged: (val) {
+  //     if (val) {
+  //       Update.checkUpdate(false);
+  //     }
+  //   },
+  // ),
 ];
 
 void _showDownPathDialog(BuildContext context, VoidCallback setState) {
