@@ -74,9 +74,8 @@ class AudioPage extends StatefulWidget {
     String? audioUrl,
     int? extraId,
     String? bvid,
-    String? cover,
-    String? title,
-    bool off = false,
+    bool off = false, String? title, String? cover,
+    List<DetailItem>? playlist,
   }) {
     final args = {
       'id': ?id,
@@ -89,8 +88,7 @@ class AudioPage extends StatefulWidget {
       'audioUrl': ?audioUrl,
       'extraId': ?extraId,
       'bvid': ?bvid,
-      'cover': ?cover,
-      'title': ?title,
+      'playlist': ?playlist,
     };
     PipOverlayService.close();
     AudioPlaybackSession.prepare(args);
@@ -162,12 +160,12 @@ class _AudioPageState extends State<AudioPage> {
       if (!_relatedOpen || !_controller.isUgc) return;
       final currentBvid = IdUtils.av2bv(_controller.oid.toInt());
       if (related.bvid != currentBvid) {
-        related..bvid = currentBvid
-        ..queryData();
+        related.bvid = currentBvid;
+        related.queryData();
       }
     });
-    related..bvid = bvid
-    ..queryData();
+    related.bvid = bvid;
+    related.queryData();
     _relatedOpen = true;
     showModalBottomSheet(
       context: context,
@@ -245,160 +243,160 @@ class _AudioPageState extends State<AudioPage> {
       child: Focus(
         autofocus: true,
         child: SimpleScaffold(
-      appBar: AppBar(
-        actions: [
-          if (_controller.isUgc && !_controller.isOffline &&
-              _controller.enableSponsorBlock)
-            Obx(() {
-              if (_controller.segmentProgressList.isNotEmpty) {
-                return IconButton(
-                  tooltip: '片段信息',
-                  onPressed: _controller.showSBDetail,
-                  icon: const Icon(MdiIcons.advertisements, size: 22),
-                );
-              }
-              return const SizedBox.shrink();
-            }),
-          if (!_controller.isOffline) Builder(
-            builder: (context) {
-              return PopupMenuButton<ListOrder>(
-                tooltip: '排序',
-                icon: const Icon(Icons.sort, size: 22),
-                initialValue: _controller.order,
-                onSelected: (value) {
-                  _controller.onChangeOrder(value);
-                  (context as Element).markNeedsBuild();
+          appBar: AppBar(
+            actions: [
+              if (_controller.isUgc && !_controller.isOffline &&
+                  _controller.enableSponsorBlock)
+                Obx(() {
+                  if (_controller.segmentProgressList.isNotEmpty) {
+                    return IconButton(
+                      tooltip: '片段信息',
+                      onPressed: _controller.showSBDetail,
+                      icon: const Icon(MdiIcons.advertisements, size: 22),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+              if (!_controller.isOffline) Builder(
+                builder: (context) {
+                  return PopupMenuButton<ListOrder>(
+                    tooltip: '排序',
+                    icon: const Icon(Icons.sort, size: 22),
+                    initialValue: _controller.order,
+                    onSelected: (value) {
+                      _controller.onChangeOrder(value);
+                      (context as Element).markNeedsBuild();
+                    },
+                    itemBuilder: (context) => ListOrder.values
+                        .map((e) => PopupMenuItem(value: e, child: Text(e.title)))
+                        .toList(),
+                  );
                 },
-                itemBuilder: (context) => ListOrder.values
-                    .map((e) => PopupMenuItem(value: e, child: Text(e.title)))
-                    .toList(),
-              );
-            },
-          ),
-          // Discovery for people who never found the quick switch; once it is
-          // on, the home toggle covers this. Decided when the page is built.
-          if (!AudioFirstMode.enabled.value)
-            PopupMenuButton<bool>(
-              tooltip: '下次默认进入音频模式',
-              icon: const _SoundWaveIcon(),
-              onSelected: (_) => AudioFirstMode.setDefaultAudio(true),
-              itemBuilder: (context) {
-                final textTheme = Theme.of(context).textTheme;
-                final colorScheme = Theme.of(context).colorScheme;
-                return [
-                  PopupMenuItem<bool>(
-                    value: true,
-                    height: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 232),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '下次默认进入音频模式',
-                            style: textTheme.titleSmall,
+              ),
+              // Discovery for people who never found the quick switch; once it is
+              // on, the home toggle covers this. Decided when the page is built.
+              if (!AudioFirstMode.enabled.value)
+                PopupMenuButton<bool>(
+                  tooltip: '下次默认进入音频模式',
+                  icon: const _SoundWaveIcon(),
+                  onSelected: (_) => AudioFirstMode.setDefaultAudio(true),
+                  itemBuilder: (context) {
+                    final textTheme = Theme.of(context).textTheme;
+                    final colorScheme = Theme.of(context).colorScheme;
+                    return [
+                      PopupMenuItem<bool>(
+                        value: true,
+                        height: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 232),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '下次默认进入音频模式',
+                                style: textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '点开视频时直接进入音频播放。首页右上角的切换按钮在重启应用后出现，随时可以切回视频。',
+                                style: textTheme.bodySmall!.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.normal,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '点这里开启',
+                                style: textTheme.labelLarge!.copyWith(
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '点开视频时直接进入音频播放。首页右上角的切换按钮在重启应用后出现，随时可以切回视频。',
-                            style: textTheme.bodySmall!.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.normal,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '点这里开启',
-                            style: textTheme.labelLarge!.copyWith(
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ];
+                  },
+                ),
+              IconButton(
+                tooltip: '定时关闭',
+                onPressed: () => shutdownTimerService
+                  ..onPause ??= _controller.onPause
+                  ..isPlaying ??= _controller.isPlaying
+                  ..showScheduleExitDialog(
+                    context,
+                    isFullScreen: false,
                   ),
-                ];
-              },
-            ),
-          IconButton(
-            tooltip: '定时关闭',
-            onPressed: () => shutdownTimerService
-              ..onPause ??= _controller.onPause
-              ..isPlaying ??= _controller.isPlaying
-              ..showScheduleExitDialog(
-                context,
-                isFullScreen: false,
+                icon: const Icon(Icons.schedule, size: 22),
               ),
-            icon: const Icon(Icons.schedule, size: 22),
+              if (_controller.isUgc && !_controller.isOffline)
+                IconButton(
+                  tooltip: '下载当前音频',
+                  onPressed: _controller.downloadCurrentAudio,
+                  icon: const Icon(Icons.download_outlined, size: 22),
+                ),
+              if (_controller.isUgc && !_controller.isOffline)
+                IconButton(
+                  tooltip: '更多',
+                  onPressed: _showMore,
+                  icon: const Icon(Icons.more_vert, size: 22),
+                ),
+              const SizedBox(width: 5),
+            ],
           ),
-          if (_controller.isUgc && !_controller.isOffline)
-            IconButton(
-              tooltip: '下载当前音频',
-              onPressed: _controller.downloadCurrentAudio,
-              icon: const Icon(Icons.download_outlined, size: 22),
+          body: Padding(
+            padding: EdgeInsets.only(
+              left: 20 + padding.left,
+              right: 20 + padding.right,
+              bottom: 30 + padding.bottom,
             ),
-          if (_controller.isUgc && !_controller.isOffline)
-            IconButton(
-              tooltip: '更多',
-              onPressed: _showMore,
-              icon: const Icon(Icons.more_vert, size: 22),
+            child: isPortrait
+                ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildInfo(colorScheme, isPortrait)),
+                const SizedBox(height: 25),
+                _buildProgressBar(colorScheme),
+                _buildDuration(colorScheme),
+                _buildControls(),
+                _buildModeActions(),
+              ],
+            )
+                : Row(
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: _buildInfo(colorScheme, isPortrait),
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Obx(() {
+                        final audioItem = _controller.audioItem.value;
+                        if (audioItem != null) {
+                          return _buildActions(audioItem);
+                        }
+                        return const SizedBox.shrink();
+                      }),
+                      const SizedBox(height: 25),
+                      _buildProgressBar(colorScheme),
+                      _buildDuration(colorScheme),
+                      _buildControls(),
+                      _buildModeActions(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          const SizedBox(width: 5),
-        ],
-      ),
-      body: Padding(
-        padding: EdgeInsets.only(
-          left: 20 + padding.left,
-          right: 20 + padding.right,
-          bottom: 30 + padding.bottom,
-        ),
-        child: isPortrait
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildInfo(colorScheme, isPortrait)),
-                  const SizedBox(height: 25),
-                  _buildProgressBar(colorScheme),
-                  _buildDuration(colorScheme),
-                  _buildControls(),
-                  _buildModeActions(),
-                ],
-              )
-            : Row(
-                spacing: 12,
-                children: [
-                  Expanded(
-                    child: _buildInfo(colorScheme, isPortrait),
-                  ),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Obx(() {
-                          final audioItem = _controller.audioItem.value;
-                          if (audioItem != null) {
-                            return _buildActions(audioItem);
-                          }
-                          return const SizedBox.shrink();
-                        }),
-                        const SizedBox(height: 25),
-                        _buildProgressBar(colorScheme),
-                        _buildDuration(colorScheme),
-                        _buildControls(),
-                        _buildModeActions(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-      ),
+          ),
         ),
       ),
     );
@@ -407,23 +405,23 @@ class _AudioPageState extends State<AudioPage> {
   Widget _buildModeActions() => !_controller.isUgc || _controller.isOffline
       ? const SizedBox.shrink()
       : Row(
-          children: [
-            Expanded(
-              child: TextButton.icon(
-                onPressed: _showRelated,
-                icon: const Icon(Icons.explore_outlined),
-                label: const Text('推荐视频'),
-              ),
-            ),
-            Expanded(
-              child: TextButton.icon(
-                onPressed: _showVideo,
-                icon: const Icon(Icons.ondemand_video_outlined),
-                label: const Text('看视频'),
-              ),
-            ),
-          ],
-        );
+    children: [
+      Expanded(
+        child: TextButton.icon(
+          onPressed: _showRelated,
+          icon: const Icon(Icons.explore_outlined),
+          label: const Text('推荐视频'),
+        ),
+      ),
+      Expanded(
+        child: TextButton.icon(
+          onPressed: _showVideo,
+          icon: const Icon(Icons.ondemand_video_outlined),
+          label: const Text('看视频'),
+        ),
+      ),
+    ],
+  );
 
   void _showPlaylist() {
     if (_controller.offlinePlaylist case final tracks?) {
@@ -500,27 +498,27 @@ class _AudioPageState extends State<AudioPage> {
                           overflow: TextOverflow.ellipsis,
                           style: isCurr
                               ? TextStyle(
-                                  fontSize: 14,
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                )
+                            fontSize: 14,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          )
                               : const TextStyle(fontSize: 14),
                         ),
                         trailing: isCurr
                             ? null
                             : iconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  if (index < _controller.index!) {
-                                    _controller.index -= 1;
-                                  }
-                                  playlist.removeAt(index);
-                                  (context as Element).markNeedsBuild();
-                                },
-                                iconColor: colorScheme.outline,
-                                size: 28,
-                                iconSize: 18,
-                              ),
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            if (index < _controller.index!) {
+                              _controller.index -= 1;
+                            }
+                            playlist.removeAt(index);
+                            (context as Element).markNeedsBuild();
+                          },
+                          iconColor: colorScheme.outline,
+                          size: 28,
+                          iconSize: 18,
+                        ),
                         children: item.parts.map((e) {
                           final isCurr = e.subId == subId;
                           return ListTile(
@@ -544,14 +542,14 @@ class _AudioPageState extends State<AudioPage> {
                               overflow: TextOverflow.ellipsis,
                               style: isCurr
                                   ? TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                    )
+                                fontSize: 14,
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              )
                                   : TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
+                                fontSize: 14,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               TextSpan(
                                 children: [
                                   if (isCurr) ...[
@@ -591,10 +589,10 @@ class _AudioPageState extends State<AudioPage> {
                         overflow: TextOverflow.ellipsis,
                         style: isCurr
                             ? TextStyle(
-                                fontSize: 14,
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              )
+                          fontSize: 14,
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        )
                             : const TextStyle(fontSize: 14),
                         TextSpan(
                           children: [
@@ -622,18 +620,18 @@ class _AudioPageState extends State<AudioPage> {
                       trailing: isCurr
                           ? null
                           : iconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                if (index < _controller.index!) {
-                                  _controller.index -= 1;
-                                }
-                                playlist.removeAt(index);
-                                (context as Element).markNeedsBuild();
-                              },
-                              iconColor: colorScheme.outline,
-                              size: 28,
-                              iconSize: 18,
-                            ),
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          if (index < _controller.index!) {
+                            _controller.index -= 1;
+                          }
+                          playlist.removeAt(index);
+                          (context as Element).markNeedsBuild();
+                        },
+                        iconColor: colorScheme.outline,
+                        size: 28,
+                        iconSize: 18,
+                      ),
                     );
                   },
                 ),
@@ -649,7 +647,7 @@ class _AudioPageState extends State<AudioPage> {
           }
           return FractionallySizedBox(
             heightFactor:
-                PlatformUtils.isMobile && !context.mediaQuerySize.isPortrait
+            PlatformUtils.isMobile && !context.mediaQuerySize.isPortrait
                 ? 1.0
                 : 0.7,
             alignment: Alignment.bottomCenter,
@@ -780,10 +778,10 @@ class _AudioPageState extends State<AudioPage> {
                         .take(4)
                         .map(
                           (e) => _playModeWidget(
-                            colorScheme: colorScheme,
-                            playMode: e,
-                          ),
-                        )
+                        colorScheme: colorScheme,
+                        playMode: e,
+                      ),
+                    )
                         .toList(),
                   ),
                 ],
@@ -907,7 +905,7 @@ class _AudioPageState extends State<AudioPage> {
                       Get.back();
                       showPlayerVolumeDialog(
                         context,
-                        () {},
+                            () {},
                         onChanged: player.setVolume,
                       );
                     },
@@ -927,7 +925,7 @@ class _AudioPageState extends State<AudioPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Obx(
-            () => ActionItem(
+                () => ActionItem(
               animation: _controller.tripleAnimation,
               icon: const Icon(FontAwesomeIcons.thumbsUp),
               selectIcon: const Icon(
@@ -941,7 +939,7 @@ class _AudioPageState extends State<AudioPage> {
             ),
           ),
           Obx(
-            () => ActionItem(
+                () => ActionItem(
               animation: _controller.tripleAnimation,
               icon: const Icon(FontAwesomeIcons.b),
               selectIcon: const Icon(FontAwesomeIcons.b),
@@ -954,7 +952,7 @@ class _AudioPageState extends State<AudioPage> {
             ),
           ),
           Obx(
-            () => ActionItem(
+                () => ActionItem(
               animation: _controller.tripleAnimation,
               icon: const Icon(FontAwesomeIcons.star),
               selectIcon: const Icon(
@@ -1035,7 +1033,7 @@ class _AudioPageState extends State<AudioPage> {
         ? const Color(0x33FFFFFF)
         : const Color(0x33999999);
     Widget child = Obx(
-      () => ProgressBar(
+          () => ProgressBar(
         progress: _controller.position.value,
         total: _controller.duration.value,
         baseBarColor: baseBarColor,
@@ -1059,7 +1057,7 @@ class _AudioPageState extends State<AudioPage> {
             right: 0,
             bottom: 3.5,
             child: Obx(
-              () {
+                  () {
                 if (_controller.segmentProgressList.isNotEmpty) {
                   return SegmentProgressBar(
                     height: 5,
@@ -1122,7 +1120,7 @@ class _AudioPageState extends State<AudioPage> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Obx(
-          () => IconButton(
+              () => IconButton(
             onPressed: _showPlaySettings,
             icon: Icon(
               size: 26,
@@ -1184,7 +1182,7 @@ class _AudioPageState extends State<AudioPage> {
                         cacheWidth: 170.cacheSize(context),
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) =>
-                            const Icon(Icons.headphones_rounded, size: 120),
+                        const Icon(Icons.headphones_rounded, size: 120),
                       ),
                       const SizedBox(height: 16),
                       SelectionText(offline.showTitle,
@@ -1201,11 +1199,7 @@ class _AudioPageState extends State<AudioPage> {
         );
       }
       if (audioItem != null) {
-        String cover = audioItem.arc.cover;
-        if (cover.isEmpty) {
-          cover = _controller.fallbackCover.value ?? '';
-        }
-        cover = cover.http2https;
+        final cover = audioItem.arc.cover.http2https;
         return Column(
           children: [
             Expanded(
@@ -1276,7 +1270,7 @@ class _AudioPageState extends State<AudioPage> {
                             children: [
                               TextSpan(
                                 text:
-                                    ' ${NumUtils.numFormat(audioItem.stat.view)}   '
+                                ' ${NumUtils.numFormat(audioItem.stat.view)}   '
                                     '${DateFormatUtils.dateFormat(audioItem.arc.publish.toInt(), long: DateFormatUtils.longFormatD)}   ',
                               ),
                               TextSpan(
@@ -1311,51 +1305,7 @@ class _AudioPageState extends State<AudioPage> {
           ],
         );
       }
-
-      // 私密稿件不在 Listener/Playlist 列表中时，用透传或详情接口补回的
-      // 元数据至少把封面和标题显示出来，避免整块信息区空白。
-      final fallbackCover = _controller.fallbackCover.value?.http2https;
-      final fallbackTitle = _controller.fallbackTitle.value;
-      if ((fallbackCover == null || fallbackCover.isEmpty) &&
-          (fallbackTitle == null || fallbackTitle.isEmpty)) {
-        return const SizedBox.shrink();
-      }
-      return Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ListView(
-                padding: .zero,
-                shrinkWrap: true,
-                physics: platformClampingPhysics,
-                children: [
-                  if (fallbackCover != null && fallbackCover.isNotEmpty)
-                    Center(
-                      child: GestureDetector(
-                        onTap: () => PageUtils.imageView(
-                          imgList: [SourceModel(url: fallbackCover)],
-                        ),
-                        child: NetworkImgLayer(
-                          src: fallbackCover,
-                          width: 170,
-                          height: 170,
-                          cacheWidth: false,
-                        ),
-                      ),
-                    ),
-                  if (fallbackTitle != null && fallbackTitle.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    SelectionText(
-                      fallbackTitle,
-                      style: const TextStyle(height: 1.7, fontSize: 16),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
+      return const SizedBox.shrink();
     });
   }
 }

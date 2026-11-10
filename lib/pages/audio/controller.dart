@@ -128,6 +128,12 @@ class AudioController extends GetxController
   int? index;
   List<DetailItem>? playlist;
 
+  // 收藏夹页直接传进来的列表（Listener/Playlist 不下发私密稿件）
+  List<DetailItem>? _localPlaylist;
+  // 服务端没下发、由收藏夹数据构造的条目：取流走 web、元数据按需补齐
+  final Set<int> _localOids = <int>{};
+  final Set<int> _detailRequested = <int>{};
+
   late double speed = 1.0;
 
   void setSpeed(double value) {
@@ -210,6 +216,10 @@ class AudioController extends GetxController
         : (args['subId'] as List<int>?)?.map(Int64.new).toList() ?? [oid];
     itemType = args['itemType'] ?? 1;
     from = args['from'] ?? PlaylistSource.UP_ARCHIVE;
+    _localPlaylist = args['playlist'] as List<DetailItem>?;
+    if (_localPlaylist != null) {
+      _localOids.addAll(_localPlaylist!.map((e) => e.item.oid.toInt()));
+    }
     _start = args['start'];
     final int? extraId = args['extraId'];
     if (extraId != null) this.extraId = Int64(extraId);
@@ -367,6 +377,7 @@ class AudioController extends GetxController
       (subId.firstOrNull ?? oid).toInt(),
       hashCode.toString(),
     );
+    unawaited(_fillCurrentDetail());
   }
 
   /// Listener/Playlist 只为公开投稿合集返回完整 DetailItem；私密稿件要么
@@ -417,9 +428,25 @@ class AudioController extends GetxController
 
     final aid = detail.aid ?? oid.toInt();
     final currCid = subId.firstOrNull ?? Int64(detail.cid ?? 0);
+    final item = _detailItemFromWeb(detail, aid, [currCid]);
+    playlist = [item];
+    index = 0;
+    _isFallbackPlaylist = true;
+    // 兜底列表没有服务端分页游标，避免 loadNext 再发一次无意义的请求。
+    _prev = null;
+    _next = null;
+    _updateCurrItem(item);
+  }
+
+  /// 用 wbi view 的详情构造内存 DetailItem：服务端列表缺失或需要补齐分 P 时用
+  DetailItem _detailItemFromWeb(
+    VideoDetailData detail,
+    int aid,
+    Iterable<Int64> subId,
+  ) {
     final owner = detail.owner;
     final stat = detail.stat;
-    final parts = pages
+    final parts = detail.pages!
         .map(
           (e) => BKArcPart(
             oid: Int64(aid),
@@ -430,11 +457,11 @@ class AudioController extends GetxController
           ),
         )
         .toList();
-    final item = DetailItem(
+    return DetailItem(
       item: PlayItem(
         itemType: itemType,
         oid: Int64(aid),
-        subId: [currCid],
+        subId: subId,
       ),
       arc: BKArchive(
         oid: Int64(aid),
@@ -465,13 +492,33 @@ class AudioController extends GetxController
         share: stat?.share,
       ),
     );
-    playlist = [item];
-    index = 0;
-    _isFallbackPlaylist = true;
-    // 兜底列表没有服务端分页游标，避免 loadNext 再发一次无意义的请求。
-    _prev = null;
-    _next = null;
-    _updateCurrItem(item);
+  }
+
+  /// 收藏夹条目只有概要信息（首 P 的 cid），选中后用 web 详情补齐真实分 P，
+  /// 列表弹窗才能展开分 P，[ / ] 切分 P 也仍然可用
+  Future<void> _fillCurrentDetail() async {
+    final item = audioItem.value;
+    if (item == null || !isUgc) return;
+    final aid = item.item.oid.toInt();
+    if (!_localOids.contains(aid) || !_detailRequested.add(aid)) return;
+    try {
+      final res = await VideoHttp.videoIntro(bvid: IdUtils.av2bv(aid));
+      if (isClosed) return;
+      if (res case Success(:final response)
+          when response.pages?.isNotEmpty == true) {
+        final detail = _detailItemFromWeb(response, aid, item.item.subId);
+        final list = playlist;
+        if (list != null) {
+          final i = list.indexWhere((e) => e.item.oid.toInt() == aid);
+          if (i != -1) list[i] = detail;
+        }
+        if (audioItem.value?.item.oid.toInt() == aid) {
+          _updateCurrItem(detail);
+        }
+      }
+    } catch (_) {
+      // 补齐失败不影响播放，继续用收藏夹里的概要信息
+    }
   }
 
   Future<void> _queryPlayList({
@@ -498,38 +545,93 @@ class AudioController extends GetxController
         final paginationReply = response.paginationReply;
         _prev = response.reachStart ? null : paginationReply.prev;
         _next = response.reachEnd ? null : paginationReply.next;
-        final index = response.list.indexWhere((e) => e.item.oid == oid);
-        if (index != -1) {
-          this.index = index;
-          _updateCurrItem(response.list[index]);
-          playlist = response.list;
-          _isFallbackPlaylist = false;
-        }
-        final item = audioItem.value;
-        if (item == null || item.arc.cover.isEmpty) {
-          await _fillFallbackMeta();
+        final local = _localPlaylist;
+        if (local != null && local.isNotEmpty) {
+          // 收藏夹已加载条目为骨架，服务端条目补全元数据，私密稿件保留本地条目
+          _applyPlaylist(_mergeWithLocal(response.list));
+        } else {
+          final index = response.list.indexWhere((e) => e.item.oid == oid);
+          if (index != -1) {
+            this.index = index;
+            _updateCurrItem(response.list[index]);
+            playlist = response.list;
+            _isFallbackPlaylist = false;
+          }
+          final item = audioItem.value;
+          if (item == null || item.arc.cover.isEmpty) {
+            await _fillFallbackMeta();
+          }
         }
       } else if (isLoadPrev) {
         _prev = response.reachStart ? null : response.paginationReply.prev;
-        if (response.list.isNotEmpty) {
-          index += response.list.length;
-          playlist?.insertAll(0, response.list);
+        final added = _uniqueItems(response.list, playlist);
+        if (added.isNotEmpty) {
+          index = (index ?? 0) + added.length;
+          playlist?.insertAll(0, added);
         }
       } else if (isLoadNext) {
         _next = response.reachEnd ? null : response.paginationReply.next;
-        if (response.list.isNotEmpty) {
-          playlist?.addAll(response.list);
-        }
+        playlist?.addAll(_uniqueItems(response.list, playlist));
       }
     } else {
       if (isInit) {
-        await _fillFallbackMeta();
+        final local = _localPlaylist;
+        if (local != null && local.isNotEmpty) {
+          _applyPlaylist(List<DetailItem>.of(local));
+        } else {
+          await _fillFallbackMeta();
+        }
       }
       // 私密稿件已用 wbi view 完整补齐时，不再弹 gRPC 的错误提示。
       if (!isInit || playlist == null) {
         res.toast();
       }
     }
+  }
+
+  void _applyPlaylist(List<DetailItem> list) {
+    playlist = list;
+    _isFallbackPlaylist = false;
+    if (list.isEmpty) return;
+    final i = list.indexWhere((e) => e.item.oid == oid);
+    index = i == -1 ? 0 : i;
+    _updateCurrItem(list[index!]);
+  }
+
+  List<DetailItem> _mergeWithLocal(List<DetailItem> remote) {
+    final local = _localPlaylist;
+    if (local == null || local.isEmpty) return List<DetailItem>.of(remote);
+    final remoteByOid = <int, DetailItem>{
+      for (final e in remote) e.item.oid.toInt(): e,
+    };
+    final seen = <int>{};
+    final result = <DetailItem>[];
+    // 收藏夹当前展示顺序为准；服务端有的条目用服务端的（分 P、统计更全）
+    for (final e in local) {
+      final oid = e.item.oid.toInt();
+      if (!seen.add(oid)) continue;
+      final item = remoteByOid[oid];
+      if (item != null) {
+        _localOids.remove(oid);
+        result.add(item);
+      } else {
+        result.add(e);
+      }
+    }
+    // 本地只加载了前几页时，把服务端多出来的条目补到末尾
+    for (final e in remote) {
+      if (seen.add(e.item.oid.toInt())) result.add(e);
+    }
+    return result;
+  }
+
+  List<DetailItem> _uniqueItems(
+    Iterable<DetailItem> src,
+    List<DetailItem>? base,
+  ) {
+    if (base == null || base.isEmpty) return List<DetailItem>.of(src);
+    final existing = base.map((e) => e.item.oid.toInt()).toSet();
+    return src.where((e) => existing.add(e.item.oid.toInt())).toList();
   }
 
   @pragma('vm:notify-debugger-on-exception')
@@ -1063,7 +1165,8 @@ class AudioController extends GetxController
     if (currIndex < 0) return false;
     final target = currIndex + (isNext ? 1 : -1);
     if (target < 0 || target >= parts.length) return false;
-    playIndex(0, subId: [parts[target].subId]);
+    // 收藏夹合并列表里当前条目未必是第 0 条，别切分 P 时串到别的稿件
+    playIndex(index ?? 0, subId: [parts[target].subId]);
     return true;
   }
 
