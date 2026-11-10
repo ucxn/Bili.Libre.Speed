@@ -983,6 +983,7 @@ Widget _themeTrailing(ThemeData theme) {
 
 // 我的页上能藏的按钮；倍速设置、网关管理常驻，不在这里
 const _mineButtons = {
+  SettingBoxKey.mineBtnOneKeyListen: '一键听歌',
   SettingBoxKey.mineBtnHistory: '观看记录',
   SettingBoxKey.mineBtnSub: '我的订阅',
   SettingBoxKey.mineBtnLater: '稍后再看',

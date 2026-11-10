@@ -20,11 +20,10 @@ import 'package:PiliBro/utils/grid.dart';
 import 'package:PiliBro/utils/request_utils.dart';
 import 'package:PiliBro/utils/share_utils.dart';
 import 'package:PiliBro/utils/utils.dart';
-import 'package:PiliBro/grpc/bilibili/app/listener/v1.pb.dart'
-    show Author, BKArcPart, BKArchive, BKStat, DetailItem, PlayItem;
 import 'package:PiliBro/grpc/bilibili/app/listener/v1.pbenum.dart';
 import 'package:PiliBro/pages/audio/view.dart';
-import 'package:fixnum/fixnum.dart' show Int64;
+import 'package:PiliBro/pages/mine/one_key_listen.dart'
+    show buildFavAudioPlaylist;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -359,52 +358,6 @@ class _FavDetailPageState extends State<FavDetailPage>
     ];
   }
 
-  // 收藏夹页已经拿到的条目直接造成 DetailItem：Listener/Playlist 会过滤私密稿件，
-  // 只靠服务端下发的话「全部加到听视频」的列表里永远没有它们
-  static List<DetailItem> _toDetailItems(Iterable<FavDetailItemModel> items) {
-    final result = <DetailItem>[];
-    for (final e in items) {
-      final aid = e.id;
-      final cid = e.ugc?.firstCid;
-      if (aid == null || cid == null) continue;
-      final oid = Int64(aid);
-      final subId = Int64(cid);
-      final title = e.title ?? '';
-      final duration = e.duration ?? 0;
-      result.add(
-        DetailItem(
-          item: PlayItem(itemType: 1, oid: oid, subId: [subId]),
-          arc: BKArchive(
-            oid: oid,
-            title: title,
-            cover: e.cover ?? '',
-            desc: e.intro ?? '',
-            duration: Int64(duration),
-            displayedOid: e.bvid ?? '',
-          ),
-          // 占位分 P，保证播放/列表逻辑不会因 parts 为空而越界；
-          // 选中后由听视频页用 web 详情补齐真实分 P
-          parts: [
-            BKArcPart(
-              oid: oid,
-              subId: subId,
-              title: title,
-              duration: Int64(duration),
-              page: 1,
-            ),
-          ],
-          owner: Author(
-            mid: Int64(e.upper?.mid ?? 0),
-            name: e.upper?.name ?? '',
-            avatar: e.upper?.face ?? '',
-          ),
-          stat: BKStat(view: e.cntInfo?.play ?? 0),
-        ),
-      );
-    }
-    return result;
-  }
-
   // 整个收藏夹当播放列表交给听视频，从第一个视频开始；MEDIA_LIST 下收藏夹的业务类型是 3（合集是 8）
   void _playAllInAudio() {
     final items = controller.loadingState.value.dataOrNull
@@ -425,7 +378,7 @@ class _FavDetailPageState extends State<FavDetailPage>
       id: controller.mediaId,
       extraId: 3,
       from: PlaylistSource.MEDIA_LIST,
-      playlist: _toDetailItems(items),
+      playlist: buildFavAudioPlaylist(items),
     );
   }
 

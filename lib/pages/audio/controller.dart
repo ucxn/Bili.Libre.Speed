@@ -1157,12 +1157,16 @@ class AudioController extends GetxController
     return player?.playOrPause();
   }
 
+  /// 切当前稿件的上/下一个分 P；分 P 用尽或单 P 稿件返回 false，
+  /// 由调用方接着切上/下一个稿件。
   bool _playFallbackPart({required bool isNext}) {
     final parts = audioItem.value?.parts;
     if (parts == null || parts.length < 2) return false;
     final curr = subId.firstOrNull;
-    final currIndex = parts.indexWhere((e) => e.subId == curr);
-    if (currIndex < 0) return false;
+    var currIndex = parts.indexWhere((e) => e.subId == curr);
+    // web 详情补齐的 parts 与收藏夹里的 firstCid 偶有不一致时，
+    // 把当前当作第一个分 P，别让有分 P 的稿件被整个跳过
+    if (currIndex < 0) currIndex = 0;
     final target = currIndex + (isNext ? 1 : -1);
     if (target < 0 || target >= parts.length) return false;
     // 收藏夹合并列表里当前条目未必是第 0 条，别切分 P 时串到别的稿件
@@ -1176,7 +1180,16 @@ class AudioController extends GetxController
       playLocalIndex(_offlineIndex - 1);
       return true;
     }
-    return _playFallbackPart(isNext: false);
+    if (index != null && playlist != null && player != null) {
+      // 先回退到上一个分 P；已经是第一个分 P（或单 P 稿件）才切上一个稿件
+      if (_playFallbackPart(isNext: false)) return true;
+      final prev = index! - 1;
+      if (prev >= 0) {
+        playIndex(prev);
+        return true;
+      }
+    }
+    return false;
   }
 
   bool playNext({bool nextPart = false}) {
@@ -1212,11 +1225,10 @@ class AudioController extends GetxController
         }
       }
     }
-    // 自动连播（nextPart）已有自己的分 P 切换路径，不重复处理
-    if (!nextPart) {
-      return _playFallbackPart(isNext: true);
-    }
     if (index != null && playlist != null && player != null) {
+      // 自动连播（nextPart）已有自己的分 P 切换路径；手动切下一首时，
+      // 先切当前稿件的下一个分 P，分 P 用尽（或单 P 稿件）才切下一个稿件
+      if (!nextPart && _playFallbackPart(isNext: true)) return true;
       final next = index! + 1;
       if (next < playlist!.length) {
         if (next == playlist!.length - 1 && _next != null) {
