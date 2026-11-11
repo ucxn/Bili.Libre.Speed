@@ -1962,6 +1962,14 @@ class VideoDetailController extends GetxController
         }
       } catch (_) {}
     }
+    String? cover;
+    String? title;
+    if (isUgc) {
+      try {
+        cover = ugcIntroCtr.videoDetail.value.pic;
+        title = ugcIntroCtr.videoDetail.value.title;
+      } catch (_) {}
+    }
     AudioPage.toAudioPage(
       itemType: 1,
       id: id,
@@ -1973,6 +1981,8 @@ class VideoDetailController extends GetxController
       audioUrl: audioUrl,
       extraId: extraId,
       bvid: bvid,
+      cover: cover,
+      title: title,
     );
   }
 

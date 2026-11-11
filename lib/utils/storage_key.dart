@@ -295,6 +295,7 @@ abstract final class SettingBoxKey {
       enableDocProvider = 'enableDocProvider',
       enableEmoteTooltip = 'enableEmoteTooltip',
       mineTabs = 'mineTabs',
+      mineBtnOneKeyListen = 'mineBtnOneKeyListen',
       mineBtnHistory = 'mineBtnHistory',
       mineBtnSub = 'mineBtnSub',
       mineBtnLater = 'mineBtnLater',

@@ -22,6 +22,8 @@ import 'package:PiliBro/utils/share_utils.dart';
 import 'package:PiliBro/utils/utils.dart';
 import 'package:PiliBro/grpc/bilibili/app/listener/v1.pbenum.dart';
 import 'package:PiliBro/pages/audio/view.dart';
+import 'package:PiliBro/pages/mine/one_key_listen.dart'
+    show buildFavAudioPlaylist;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -358,21 +360,25 @@ class _FavDetailPageState extends State<FavDetailPage>
 
   // 整个收藏夹当播放列表交给听视频，从第一个视频开始；MEDIA_LIST 下收藏夹的业务类型是 3（合集是 8）
   void _playAllInAudio() {
-    final first = controller.loadingState.value.dataOrNull
-        ?.where((e) => e.type == 2)
-        .firstOrNull;
-    final cid = first?.ugc?.firstCid;
-    if (first == null || cid == null) {
+    final items = controller.loadingState.value.dataOrNull
+            ?.where(
+              (e) => e.type == 2 && e.id != null && e.ugc?.firstCid != null,
+            )
+            .toList() ??
+        [];
+    if (items.isEmpty) {
       SmartDialog.showToast('收藏夹里没有可听的视频');
       return;
     }
+    final first = items.first;
     AudioPage.toAudioPage(
       itemType: 1,
       oid: first.id!,
-      subId: [cid],
+      subId: [first.ugc!.firstCid!],
       id: controller.mediaId,
       extraId: 3,
       from: PlaylistSource.MEDIA_LIST,
+      playlist: buildFavAudioPlaylist(items),
     );
   }
 
