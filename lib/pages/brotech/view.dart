@@ -27,6 +27,12 @@ class _BroTechPageState extends State<BroTechPage> {
   static const _localNetworkChannel = MethodChannel('pilibro/local_network');
   static const _runAtKey = 'broTechRunAt';
   static const _consentKey = 'broTechConsent';
+  // 地址框输入彩蛋后写进同一个键，代替 true；同意许可证的判断同时认这个值
+  static const _unlockMatch = 1935;
+  static bool get credentialsAllowed =>
+      Platform.isAndroid ||
+      Platform.isIOS ||
+      GStorage.localCache.get(_consentKey) == _unlockMatch;
   final _host = TextEditingController();
   late BroTechRunAt _runAt = BroTechRunAt.values.firstWhere(
     (e) => e.key == GStorage.localCache.get(_runAtKey),
@@ -87,7 +93,7 @@ class _BroTechPageState extends State<BroTechPage> {
   @override
   void initState() {
     super.initState();
-    if (GStorage.localCache.get(_consentKey) != true) {
+    if (GStorage.localCache.get(_consentKey, defaultValue: 0) == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final agreed = await showDialog<bool>(
           context: context,
@@ -109,6 +115,13 @@ class _BroTechPageState extends State<BroTechPage> {
   void dispose() {
     _host.dispose();
     super.dispose();
+  }
+
+  void _onHostSubmitted(String value) {
+    if (value.trim() != '哥哥科技') return;
+    GStorage.localCache.put(_consentKey, _unlockMatch);
+    _host.clear();
+    SmartDialog.showToast('已解锁账号密码');
   }
 
   Future<void> _savePresets() => BroTechPresets.save(_presets);
@@ -229,7 +242,7 @@ class _BroTechPageState extends State<BroTechPage> {
                   ],
                   onChanged: (value) => runAt = value!,
                 ),
-                if (Platform.isAndroid || Platform.isIOS) ...[
+                if (credentialsAllowed) ...[
                   TextField(
                     controller: user,
                     decoration: const InputDecoration(
@@ -357,6 +370,7 @@ class _BroTechPageState extends State<BroTechPage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: TextField(
               controller: _host,
+              onSubmitted: _onHostSubmitted,
               decoration: const InputDecoration(
                 labelText: '路由器后台地址',
                 border: OutlineInputBorder(),
@@ -460,7 +474,7 @@ class _BroTechConsentState extends State<_BroTechConsent> {
 
   Future<void> _agree() async {
     if (widget.persistConsent) {
-      await GStorage.localCache.put(_BroTechPageState._consentKey, true);
+      await GStorage.localCache.put(_BroTechPageState._consentKey, 1);
     }
     Get.back(result: true);
   }
@@ -762,7 +776,7 @@ class _BroTechWebPageState extends State<BroTechWebPage> {
 
   @override
   Widget build(BuildContext context) {
-    final credentials = Platform.isAndroid || Platform.isIOS;
+    final credentials = _BroTechPageState.credentialsAllowed;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.preset.title),
