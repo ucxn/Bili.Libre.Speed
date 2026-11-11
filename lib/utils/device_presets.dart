@@ -58,9 +58,11 @@ abstract final class DevicePresets {
     await _apply(
     {
       SettingBoxKey.orientationPolicyMode:
-          Platform.isAndroid && DeviceUtils.sdkInt >= 34
+          Platform.isAndroid && DeviceUtils.sdkInt > 33
               ? OrientationPolicyMode.brotherTech.index
               : OrientationPolicyMode.advanced.index,
+      if (Platform.isAndroid && DeviceUtils.sdkInt > 33)
+        SettingBoxKey.autoPlayEnable: true,
       SettingBoxKey.horizontalScreen: false,
       SettingBoxKey.keyboardControl: true,
       SettingBoxKey.autoFullscreenMode: AutoFullscreenMode.off.index,
