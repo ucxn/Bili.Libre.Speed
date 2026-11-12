@@ -95,7 +95,7 @@ Widget? compactVideoCard(
                         ),
                         decoration: const BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
+                          borderRadius: .all(.circular(4)),
                         ),
                         child: Text(durationText,
                             style: const TextStyle(fontSize: 11, color: Colors.white)

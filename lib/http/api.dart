@@ -5,7 +5,7 @@ abstract final class Api {
   static const String recommendListApp =
       '${HttpString.appBaseUrl}/x/v2/feed/index';
   static const String recommendListWeb =
-      '/x/web-interface/wbi/index/top/feed/rcmd';
+      r'/x/web-interface/wbi/index/top/feed/rcmd';
 
   // APP端不感兴趣、取消不感兴趣
   static const String feedDislike = '${HttpString.appBaseUrl}/x/feed/dislike';
@@ -13,25 +13,24 @@ abstract final class Api {
       '${HttpString.appBaseUrl}/x/feed/dislike/cancel';
 
   // 热门视频
-  static const String hotList = '/x/web-interface/popular';
+  static const String hotList = r'/x/web-interface/popular';
 
   // 视频流
-  // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/video/videostream_url.md
-  static const String ugcUrl = '/x/player/wbi/playurl';
+  static const String ugcUrl = r'/x/player/wbi/playurl';
 
   // 番剧视频流
   // https://api.bilibili.com/pgc/player/web/v2/playurl?cid=104236640&bvid=BV13t411n7ex
-  static const String pgcUrl = '/pgc/player/web/v2/playurl';
+  static const String pgcUrl = r'/pgc/player/web/v2/playurl';
 
-  static const String pugvUrl = '/pugv/player/web/playurl';
+  static const String pugvUrl = r'/pugv/player/web/playurl';
 
-  static const String ogvUrl = '/ogv/player/playview';
+  static const String ogvUrl = r'/ogv/player/playview';
 
-  static const String tvPlayUrl = '/x/tv/playurl';
+  static const String tvPlayUrl = r'/x/tv/playurl';
 
   // 字幕
   // aid, cid
-  static const String playInfo = '/x/player/wbi/v2';
+  static const String playInfo = r'/x/player/wbi/v2';
 
   // 视频详情
   // 竖屏 https://api.bilibili.com/x/web-interface/view?aid=527403921
@@ -40,7 +39,6 @@ abstract final class Api {
   // 视频详情 超详细
   // https://api.bilibili.com/x/web-interface/view/detail?aid=527403921
 
-  /// https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/video/action.md
   // 点赞 Post
   /// aid	num	稿件avid	必要（可选）	avid与bvid任选一个
   /// bvid	str	稿件bvid	必要（可选）	avid与bvid任选一个
@@ -58,7 +56,7 @@ abstract final class Api {
   // https://api.bilibili.com/x/web-interface/archive/has/like
   // static const String hasLikeVideo = '/x/web-interface/archive/has/like';
 
-  static const String pgcLikeCoinFav = '/pgc/season/episode/community';
+  static const String pgcLikeCoinFav = r'/pgc/season/episode/community';
 
   // 视频点踩 web端不支持
 
@@ -98,7 +96,7 @@ abstract final class Api {
   /// platform web
   /// type 0 当前收藏夹 1 全部收藏夹
   // https://api.bilibili.com/x/v3/fav/resource/list?media_id=76614671&pn=1&ps=20&keyword=&order=mtime&type=0&tid=0
-  static const String favResourceList = '/x/v3/fav/resource/list';
+  static const String favResourceList = r'/x/v3/fav/resource/list';
 
   // 收藏视频（双端）POST
   // access_key	str	APP登录Token	APP方式必要
@@ -109,19 +107,19 @@ abstract final class Api {
   // csrf	str	CSRF Token（位于cookie）	Cookie方式必要
   // https://api.bilibili.com/medialist/gateway/coll/resource/deal
   // https://api.bilibili.com/x/v3/fav/resource/deal
-  static const String favVideo = '/x/v3/fav/resource/batch-deal';
+  static const String favVideo = r'/x/v3/fav/resource/batch-deal';
 
-  static const String unfavAll = '/x/v3/fav/resource/unfav-all';
+  static const String unfavAll = r'/x/v3/fav/resource/unfav-all';
 
-  static const String copyFav = '/x/v3/fav/resource/copy';
+  static const String copyFav = r'/x/v3/fav/resource/copy';
 
-  static const String moveFav = '/x/v3/fav/resource/move';
+  static const String moveFav = r'/x/v3/fav/resource/move';
 
-  static const String cleanFav = '/x/v3/fav/resource/clean';
+  static const String cleanFav = r'/x/v3/fav/resource/clean';
 
-  static const String sortFav = '/x/v3/fav/resource/sort';
+  static const String sortFav = r'/x/v3/fav/resource/sort';
 
-  static const String sortFavFolder = '/x/v3/fav/folder/sort';
+  static const String sortFavFolder = r'/x/v3/fav/folder/sort';
 
   // 判断视频是否被收藏（双端）GET
   /// aid
@@ -139,31 +137,31 @@ abstract final class Api {
   // aid	num	稿件avid	必要（可选）	avid与bvid任选一个
   // bvid	str	稿件bvid	必要（可选）	avid与bvid任选一个
   // csrf	str	CSRF Token（位于cookie）	必要
-  static const String ugcTriple = '/x/web-interface/archive/like/triple';
+  static const String ugcTriple = r'/x/web-interface/archive/like/triple';
 
-  static const String pgcTriple = '/pgc/season/episode/like/triple';
+  static const String pgcTriple = r'/pgc/season/episode/like/triple';
 
   // 获取指定用户创建的所有收藏夹信息
   // 该接口也能查询目标内容id存在于那些收藏夹中
   // up_mid	num	目标用户mid	必要
   // type	num	目标内容属性	非必要	默认为全部 0：全部 2：视频稿件
   // rid	num	目标 视频稿件avid
-  static const String favFolder = '/x/v3/fav/folder/created/list-all';
+  static const String favFolder = r'/x/v3/fav/folder/created/list-all';
 
-  static const String copyToview = '/x/v2/history/toview/copy';
+  static const String copyToview = r'/x/v2/history/toview/copy';
 
-  static const String moveToview = '/x/v2/history/toview/move';
+  static const String moveToview = r'/x/v2/history/toview/move';
 
   // 视频详情页 相关视频
-  static const String relatedList = '/x/web-interface/archive/related';
+  static const String relatedList = r'/x/web-interface/archive/related';
 
   // 查询用户与自己关系_仅查关注
-  static const String relation = '/x/relation';
+  static const String relation = r'/x/relation';
 
-  static const String relations = '/x/relation/relations';
+  static const String relations = r'/x/relation/relations';
 
   // 操作用户关系
-  static const String relationMod = '/x/relation/modify';
+  static const String relationMod = r'/x/relation/modify';
 
   // 相互关系查询 // 失效
   // static const String relationSearch = '/x/space/wbi/acc/relation';
@@ -181,11 +179,9 @@ abstract final class Api {
   static const String hateReply = '/x/v2/reply/hate';
 
   // 发表评论
-  // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/action.md
   static const String replyAdd = '/x/v2/reply/add';
 
   // 删除评论
-  // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/comment/action.md
   static const String replyDel = '/x/v2/reply/del';
 
   // 用户(被)关注数、投稿数
@@ -235,7 +231,7 @@ abstract final class Api {
   static const String thumbDynamic = '/x/dynamic/feed/dyn/thumb';
 
   // 获取稍后再看
-  static const String seeYouLater = '/x/v2/history/toview/web';
+  static const String seeYouLater = r'/x/v2/history/toview/web';
 
   // 获取历史记录
   static const String historyList = '/x/web-interface/history/cursor';
@@ -271,7 +267,6 @@ abstract final class Api {
   static const String searchAll = '/x/web-interface/wbi/search/all/v2';
 
   // 记录视频播放进度
-  // https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/video/report.md
   static const String heartBeat = '/x/click-interface/web/heartbeat';
 
   static const String historyReport = '/x/v2/history/report';
@@ -279,7 +274,7 @@ abstract final class Api {
   static const String roomEntryAction =
       '${HttpString.liveBaseUrl}/xlive/web-room/v1/index/roomEntryAction';
 
-  static const String mediaListHistory = '/x/v1/medialist/history';
+  static const String mediaListHistory = r'/x/v1/medialist/history';
 
   // 查询视频分P列表 (avid/bvid转cid)
   static const String ab2c = '/x/player/pagelist';
@@ -287,7 +282,7 @@ abstract final class Api {
   // 番剧/剧集明细
   static const String pgcInfo = '/pgc/view/web/season';
 
-  static const String pugvInfo = '/pugv/view/web/season';
+  static const String pugvInfo = r'/pugv/view/web/season';
 
   // https://api.bilibili.com/pgc/season/episode/web/info?ep_id=12345678
   static const String episodeInfo = '/pgc/season/episode/web/info';
@@ -388,13 +383,13 @@ abstract final class Api {
   static const String memberDynamic = '/x/polymer/web-dynamic/v1/feed/space';
 
   // 稍后再看
-  static const String toViewLater = '/x/v2/history/toview/add';
+  static const String toViewLater = r'/x/v2/history/toview/add';
 
   // 移除已观看
-  static const String toViewDel = '/x/v2/history/toview/v2/dels';
+  static const String toViewDel = r'/x/v2/history/toview/v2/dels';
 
   // 清空稍后再看
-  static const String toViewClear = '/x/v2/history/toview/clear';
+  static const String toViewClear = r'/x/v2/history/toview/clear';
 
   // 追番
   static const String pgcAdd = '/pgc/web/follow/add';
@@ -405,7 +400,7 @@ abstract final class Api {
   static const String pgcUpdate = '/pgc/web/follow/status/update';
 
   // 我的追番/追剧 ?type=1&pn=1&ps=15
-  static const String favPgc = '/x/space/bangumi/follow/list';
+  static const String favPgc = r'/x/space/bangumi/follow/list';
 
   // 黑名单
   static const String blackList = '/x/relation/blacks';
@@ -421,7 +416,6 @@ abstract final class Api {
   // static const String webDanmaku = '/x/v2/dm/web/seg.so';
 
   // 发送视频弹幕
-  //https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/danmaku/action.md
   static const String shootDanmaku = '/x/v2/dm/post';
 
   // 弹幕屏蔽查询（Get）
@@ -466,13 +460,13 @@ abstract final class Api {
       '${HttpString.tUrl}/session_svr/v1/session_svr/single_unread';
 
   // 获取消息中心未读信息
-  static const String msgFeedUnread = '/x/msgfeed/unread';
+  static const String msgFeedUnread = r'/x/msgfeed/unread';
   //https://api.bilibili.com/x/msgfeed/reply?platform=web&build=0&mobi_app=web
-  static const String msgFeedReply = '/x/msgfeed/reply';
+  static const String msgFeedReply = r'/x/msgfeed/reply';
   //https://api.bilibili.com/x/msgfeed/at?platform=web&build=0&mobi_app=web
-  static const String msgFeedAt = '/x/msgfeed/at';
+  static const String msgFeedAt = r'/x/msgfeed/at';
   //https://api.bilibili.com/x/msgfeed/like?platform=web&build=0&mobi_app=web
-  static const String msgFeedLike = '/x/msgfeed/like';
+  static const String msgFeedLike = r'/x/msgfeed/like';
   //https://message.bilibili.com/x/sys-msg/query_notify_list?page_size=20&cursor=xxx
   static const String msgSysNotify =
       '${HttpString.messageBaseUrl}/x/sys-msg/query_notify_list';
@@ -540,7 +534,7 @@ abstract final class Api {
   /// up_mid=4641697&
   /// w_rid=1607c6c5a4a35a1297e31992220900ae&
   /// wts=1697033079
-  static const String aiConclusion = '/x/web-interface/view/conclusion/get';
+  static const String aiConclusion = r'/x/web-interface/view/conclusion/get';
 
   // captcha验证码
   static const String getCaptcha =
@@ -680,7 +674,7 @@ abstract final class Api {
   static const String pgcSeasonRank = "/pgc/season/rank/web/list";
 
   /// 取消订阅-播单
-  static const String unfavFolder = '/x/v3/fav/folder/unfav';
+  static const String unfavFolder = r'/x/v3/fav/folder/unfav';
 
   // static const String videoTags = '/x/tag/archive/tags';
   static const String videoTags = '/x/web-interface/view/detail/tag';
@@ -692,7 +686,7 @@ abstract final class Api {
 
   static const String delSysMsg = '/x/sys-msg/del_notify_list';
 
-  static const String delMsgfeed = '/x/msgfeed/del';
+  static const String delMsgfeed = r'/x/msgfeed/del';
 
   static const String setTop = '/session_svr/v1/session_svr/set_top';
 
@@ -713,10 +707,10 @@ abstract final class Api {
 
   static const String favSeason = '/x/v3/fav/season/fav';
 
-  static const String unfavSeason = '/x/v3/fav/season/unfav';
+  static const String unfavSeason = r'/x/v3/fav/season/unfav';
 
   /// 稍后再看&收藏夹视频列表
-  static const String mediaList = '/x/v2/medialist/resource/list';
+  static const String mediaList = r'/x/v2/medialist/resource/list';
 
   static const String pgcIndexCondition = '/pgc/season/index/condition';
 
@@ -763,18 +757,17 @@ abstract final class Api {
   static const String searchRecommend =
       '${HttpString.appBaseUrl}/x/v2/search/recommend';
 
-  static const String articleInfo = '/x/article/viewinfo';
+  static const String articleInfo = r'/x/article/viewinfo';
 
   static const String dynamicReport = '/x/dynamic/feed/dynamic_report/add';
 
-  // https://github.com/SocialSisterYi/bilibili-API-collect/pull/1242
   static const String articleView = '/x/article/view';
 
   static const String opusDetail = '/x/polymer/web-dynamic/v1/opus/detail';
 
-  static const String gaiaVgateRegister = '/x/gaia-vgate/v1/register';
+  static const String gaiaVgateRegister = r'/x/gaia-vgate/v1/register';
 
-  static const String gaiaVgateValidate = '/x/gaia-vgate/v1/validate';
+  static const String gaiaVgateValidate = r'/x/gaia-vgate/v1/validate';
 
   static const String voteInfo = '/x/vote/vote_info';
 
@@ -837,11 +830,11 @@ abstract final class Api {
 
   static const String spaceReserveCancel = '/x/space/reserve/cancel';
 
-  static const String favPugv = '/pugv/app/web/favorite/page';
+  static const String favPugv = r'/pugv/app/web/favorite/page';
 
-  static const String addFavPugv = '/pugv/app/web/favorite/add';
+  static const String addFavPugv = r'/pugv/app/web/favorite/add';
 
-  static const String delFavPugv = '/pugv/app/web/favorite/del';
+  static const String delFavPugv = r'/pugv/app/web/favorite/del';
 
   static const String favTopicList = '/x/topic/web/fav/list';
 
@@ -868,11 +861,11 @@ abstract final class Api {
   static const String topicPubSearch =
       '${HttpString.appBaseUrl}/x/topic/pub/search';
 
-  static const String upowerRank = '/x/upower/up/member/rank/v2';
+  static const String upowerRank = r'/x/upower/up/member/rank/v2';
 
   static const String favFavFolder = '/x/v3/fav/folder/fav';
 
-  static const String unfavFavFolder = '/x/v3/fav/folder/unfav';
+  static const String unfavFavFolder = r'/x/v3/fav/folder/unfav';
 
   static const String coinArc = '${HttpString.appBaseUrl}/x/v2/space/coinarc';
 
@@ -886,13 +879,13 @@ abstract final class Api {
 
   static const String coinLog = '/x/member/web/coin/log';
 
-  static const String dynTopicRcmd = '/x/topic/web/dynamic/rcmd';
+  static const String dynTopicRcmd = r'/x/topic/web/dynamic/rcmd';
 
   static const String matchInfo = '/x/esports/match/info';
 
   static const String dynPic = '/x/polymer/web-dynamic/v1/detail/pic';
 
-  static const String msgLikeDetail = '/x/msgfeed/like_detail';
+  static const String msgLikeDetail = r'/x/msgfeed/like_detail';
 
   static const String getLiveInfoByUser =
       '${HttpString.liveBaseUrl}/xlive/web-room/v1/index/getInfoByUser';
@@ -913,7 +906,7 @@ abstract final class Api {
 
   static const String spaceAudio = '/audio/music-service/web/song/upper';
 
-  static const String spaceCheese = '/pugv/app/web/season/page';
+  static const String spaceCheese = r'/pugv/app/web/season/page';
 
   static const String dynMention = '/x/polymer/web-dynamic/v1/mention/search';
 
@@ -1000,7 +993,7 @@ abstract final class Api {
 
   static const String replySubjectModify = '/x/v2/reply/subject/modify';
 
-  static const String videoshot = '/x/player/videoshot';
+  static const String videoshot = r'/x/player/videoshot';
 
   static const String liveMedalWall =
       '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/MedalWall';
@@ -1008,7 +1001,7 @@ abstract final class Api {
   static const String memberGuard =
       '${HttpString.liveBaseUrl}/xlive/app-ucenter/v1/guard/MainGuardCardAll';
 
-  static const String bubble = '/x/tribee/v1/dyn/all';
+  static const String bubble = r'/x/tribee/v1/dyn/all';
 
   static const String sortFollowTag = '/x/relation/tags/update_sort';
 
