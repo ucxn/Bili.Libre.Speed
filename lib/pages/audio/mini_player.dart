@@ -67,10 +67,6 @@ class PlaybackMiniBar extends StatelessWidget {
     final local = controller.localItem.value;
     final item = controller.audioItem.value;
     final avatar = item?.owner.avatar;
-    final arcCover = item?.arc.cover;
-    final coverUrl = (arcCover != null && arcCover.isNotEmpty)
-        ? arcCover
-        : controller.fallbackCover.value;
     final Widget cover = local != null
         ? ClipOval(
             child: Image.file(
@@ -83,7 +79,7 @@ class PlaybackMiniBar extends StatelessWidget {
             ),
           )
         : NetworkImgLayer(
-            src: coverUrl,
+            src: item?.arc.cover,
             width: 44,
             height: 44,
             type: .avatar,

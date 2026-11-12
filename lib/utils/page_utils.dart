@@ -598,8 +598,6 @@ abstract final class PageUtils {
         from: source.playlistSource ?? PlaylistSource.UP_ARCHIVE,
         extraId: source.extraId,
         bvid: bvid ?? IdUtils.av2bv(videoAid),
-        cover: cover,
-        title: title,
         off: off,
         start: progress == null ? null : Duration(milliseconds: progress),
       );
