@@ -71,10 +71,7 @@ Widget? compactVideoCard(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 10,
           children: [
-            SizedBox(
-              width: coverWidth,
-              height: coverHeight,
-              child: Stack(
+              Stack(
                 children: [
                   NetworkImgLayer(
                     width: coverWidth,
@@ -91,33 +88,27 @@ Widget? compactVideoCard(
                     Positioned(
                       right: 6,
                       bottom: 6,
-                      child: DecoratedBox(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1
+                        ),
                         decoration: const BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: .all(.circular(4)),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
-                          child: Text(
-                            durationText,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white,
-                            ),
-                          ),
+                        child: Text(durationText,
+                            style: const TextStyle(fontSize: 11, color: Colors.white)
                         ),
-                      ),
+                      )
                     ),
                 ],
               ),
-            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
+                spacing: 6,
                 children: [
                   if (video.title case final title?)
                     Text(
@@ -129,7 +120,6 @@ Widget? compactVideoCard(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  const SizedBox(height: 6),
                   Wrap(
                     spacing: 8,
                     runSpacing: 2,
@@ -144,7 +134,6 @@ Widget? compactVideoCard(
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
                   Wrap(
                     spacing: 10,
                     runSpacing: 2,
