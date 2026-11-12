@@ -18,19 +18,19 @@ abstract final class BrowserUa {
   }
 
   static const pc =
-      r'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15';
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15';
 
   static const _webkit =
-      r'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.207 Mobile Safari/537.36';
+      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.207 Mobile Safari/537.36';
 
   static const mob =
       'Mozilla/5.0 (Linux; Android ${BiliDevice.osVer}; ${BiliDevice.model}) $_webkit';
 
   /// 旧版 8.43 的结构，机型 Redmi K80 Ultra，内核新 Chrome
   static const bili =
-      r'Mozilla/5.0 (Linux; Android 15; 25053RT47C) AppleWebKit/537.36 (KHTML, like Gecko) '
-      r'Chrome/140.0.7339.207 Mobile Safari/537.36 os/android build/8430300 osVer/15 '
-      r'sdkInt/35 network/2 BiliApp/8430300 mobi_app/android_q channel/master innerVer/8430300';
+      'Mozilla/5.0 (Linux; Android 15; 25053RT47C) AppleWebKit/537.36 (KHTML, like Gecko) '
+      'Chrome/140.0.7339.207 Mobile Safari/537.36 os/android build/8430300 osVer/15 '
+      'sdkInt/35 network/2 BiliApp/8430300 mobi_app/android_q channel/master innerVer/8430300';
 
   /// 粉版 App 内置 WebView。mobi_app/android 会让创作中心被引导到 App
   static const biliApp =

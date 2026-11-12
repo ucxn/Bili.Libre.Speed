@@ -39,6 +39,7 @@ import 'package:PiliBro/models_new/video/video_pbp/data.dart';
 import 'package:PiliBro/models_new/video/video_play_info/subtitle.dart';
 import 'package:PiliBro/models_new/video/video_stein_edgeinfo/data.dart';
 import 'package:PiliBro/pages/audio/view.dart';
+import 'package:PiliBro/pages/audio/web_item.dart';
 import 'package:PiliBro/pages/common/publish/publish_route.dart';
 import 'package:PiliBro/pages/search/widgets/search_text.dart';
 import 'package:PiliBro/pages/sponsor_block/block_mixin.dart';
@@ -81,6 +82,7 @@ import 'package:dio/dio.dart' show Options;
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart'
     show ExtendedNestedScrollViewState;
+import 'package:fixnum/fixnum.dart' show Int64;
 import 'package:flutter/foundation.dart' show ValueChanged, kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
@@ -1772,6 +1774,7 @@ class VideoDetailController extends GetxController
   @override
   void onClose() {
     plPlayerController.onCdnFallback = null;
+    PlaybackStatsService.endVisit();
     PlaybackStatsService.endMediaIfMatches(
       isLive: false,
       cid: cid.value,
@@ -1962,14 +1965,6 @@ class VideoDetailController extends GetxController
         }
       } catch (_) {}
     }
-    String? cover;
-    String? title;
-    if (isUgc) {
-      try {
-        cover = ugcIntroCtr.videoDetail.value.pic;
-        title = ugcIntroCtr.videoDetail.value.title;
-      } catch (_) {}
-    }
     AudioPage.toAudioPage(
       itemType: 1,
       id: id,
@@ -1981,8 +1976,10 @@ class VideoDetailController extends GetxController
       audioUrl: audioUrl,
       extraId: extraId,
       bvid: bvid,
-      cover: cover,
-      title: title,
+      // 私密稿件不在 gRPC 播放列表里，直接用手上的详情当列表
+      playlist: isUgc && ugcIntroCtr.videoDetail.value.isViewSelf == true
+          ? [viewDetailItem(ugcIntroCtr.videoDetail.value, [Int64(cid.value)])]
+          : null,
     );
   }
 
