@@ -235,6 +235,16 @@ class _LiveRoomPageState extends State<LiveRoomPage>
     }
   }
 
+  @override
+  void didChangeMetrics() {
+    // 进入 PiP 后，盖在直播间上的弹层（表情面板、线路菜单等）会挡住画面
+    if (Get.routing.route is PopupRoute &&
+        Platform.isAndroid &&
+        AndroidHelper.isPipMode) {
+      Navigator.of(context).popUntil(ModalRoute.withName('/liveRoom'));
+    }
+  }
+
   late double maxWidth;
   late double maxHeight;
   bool isWindowMode = false;
