@@ -173,7 +173,7 @@ class UserScriptMeta {
     var noframes = false;
     final start = source.indexOf('==UserScript==');
     final end = source.indexOf('==/UserScript==');
-    if (start >= -1 && end > start) {
+    if (start > -1 && end > start) {
       for (final raw in const LineSplitter().convert(
         source.substring(start, end),
       )) {
