@@ -11,7 +11,7 @@
   <developer id="org.brotech">
     <name>BroTech</name>
   </developer>
-  <url type="homepage">https://github.com/1-Reality/BiliVideo-Lab</url>
+  <url type="homepage">https://github.com/ucxn/Bili.Libre.Speed</url>
   <launchable type="desktop-id">org.brotech.gege.pilibro.desktop</launchable>
   <content_rating type="oars-1.1"/>
 </component>
