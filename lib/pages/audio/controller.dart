@@ -181,14 +181,16 @@ class AudioController extends GetxController
       _lastVolume = null;
     }
     desktopVolume.value = volume;
-    player?.setVolume(volume * 100);
+    setVolumeCapped(player, volume);
   }
 
   void syncVolume([_]) {
     final volume = desktopVolume.value;
-    PlPlayerController.instance
-      ?..volume.value = volume
-      ..videoPlayerController?.setVolume(volume * 100);
+    if (PlPlayerController.instance case final pl?) {
+      pl
+        ..volume.value = volume
+        ..setVolumeCapped(pl.videoPlayerController, volume);
+    }
     GStorage.setting.put(SettingBoxKey.desktopVolume, volume.toPrecision(3));
   }
 
@@ -655,9 +657,6 @@ class AudioController extends GetxController
       configuration: PlayerConfiguration(
         options: {
           if (Platform.isAndroid) 'ao': Pref.audioOutput,
-          'volume': PlatformUtils.isDesktop
-              ? (desktopVolume.value * 100).toString()
-              : Pref.playerVolume.toString(),
           ...Pref.initBuffer(),
         },
       ),
@@ -667,6 +666,11 @@ class AudioController extends GetxController
       player = null;
       return;
     }
+    // >100% 的音量走 af 增益+限幅，避免直接放大 mpv volume 导致削波
+    await setVolumeCapped(
+      player,
+      PlatformUtils.isDesktop ? desktopVolume.value : Pref.playerVolume / 100,
+    );
     final stream = player!.stream;
     _subscriptions = [
       stream.position.listen((position) {

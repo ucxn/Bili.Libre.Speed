@@ -189,7 +189,7 @@ class _AudioPageState extends State<AudioPage> {
             RelatedVideoPanel(
               heroTag: _relatedTag,
               onSelect: (item) {
-                _controller.player?.pause();
+                _controller.onPause();
                 Navigator.of(sheetContext).pop();
                 pushVideoH(item);
               },
@@ -206,7 +206,7 @@ class _AudioPageState extends State<AudioPage> {
     final cid = _controller.subId.first.toInt();
     final aid = _controller.oid.toInt();
     final progress = _controller.player?.state.position.inMilliseconds;
-    _controller.player?.pause();
+    _controller.onPause();
     PageUtils.toVideoPage(
       aid: aid,
       cid: cid,
@@ -999,7 +999,7 @@ class _AudioPageState extends State<AudioPage> {
             ActionItem(
               icon: const Icon(FontAwesomeIcons.circlePlay),
               onTap: () {
-                _controller.player?.pause();
+                _controller.onPause();
                 PageUtils.toVideoPage(
                   cid: audioItem.associatedItem.subId.first.toInt(),
                   aid: audioItem.associatedItem.oid.toInt(),
@@ -1241,7 +1241,7 @@ class _AudioPageState extends State<AudioPage> {
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          _controller.player?.pause();
+                          _controller.onPause();
                           Get.toNamed('/member?mid=${audioItem.owner.mid}');
                         },
                         child: Row(

@@ -1654,9 +1654,6 @@ class PlPlayerController
       'stream-lavf-o':
           'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=30',      
       if (Platform.isAndroid) 'ao': Pref.audioOutput,
-      'volume':
-          (PlatformUtils.isMobile ? Pref.playerVolume : volume.value * 100)
-              .toString(),
     };
     final autosync = Pref.autosync;
     if (autosync != '0') {
@@ -1672,6 +1669,12 @@ class PlPlayerController
         logLevel: kDebugMode ? .warn : .error,
         options: opt,
       ),
+    );
+
+    // >100% 的音量走 af 增益+限幅，避免直接放大 mpv volume 导致削波
+    await setVolumeCapped(
+      player,
+      PlatformUtils.isMobile ? Pref.playerVolume / 100 : volume.value,
     );
 
     assert(_videoController == null);
@@ -2290,7 +2293,7 @@ class PlPlayerController
       this.volume.value = volume;
       try {
         if (PlatformUtils.isDesktop) {
-          await _videoPlayerController!.setVolume(volume * 100);
+          await setVolumeCapped(_videoPlayerController, volume);
         } else {
           FlutterVolumeController.updateShowSystemUI(false);
           await FlutterVolumeController.setVolume(volume);
@@ -2445,7 +2448,11 @@ class PlPlayerController
       videoPlayerController!.play();
     } else {
       PlaybackStatsService.markUserPause();
-      videoPlayerController!.playOrPause();
+      if (videoPlayerController!.state.playing) {
+        await pause();
+      } else {
+        await videoPlayerController!.play();
+      }
     }
   }
 

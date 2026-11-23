@@ -359,7 +359,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             return;
           }
           _pauseDueToPauseUponEnteringBackgroundMode = true;
-          currentPlayer.pause();
+          plPlayerController.pause();
         });
       }
     } else if (_pauseDueToPauseUponEnteringBackgroundMode) {
