@@ -9,7 +9,7 @@ $Tmp = Join-Path $env:RUNNER_TEMP "mpv-generic"
 $Archive = Join-Path $Tmp $Name
 
 New-Item -ItemType Directory -Force -Path $Tmp | Out-Null
-Invoke-WebRequest "https://github.com/1-Reality/BiliVideo-Lab/releases/download/deps-mirror/$Name" -OutFile $Archive
+Invoke-WebRequest "https://github.com/My-Responsitories/libmpv-win32-video-cmake/releases/download/20260911/$Name" -OutFile $Archive
 if ((Get-FileHash $Archive -Algorithm MD5).Hash -ne $Md5) { throw "MD5 mismatch: $Name" }
 7z e $Archive "-o$Tmp" libmpv-2.dll -y | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "7z failed: $Name" }

@@ -371,6 +371,7 @@ jobs:
           cp assets/linux/pilibro.png "$SRC_DIR/assets/pilibro.png"
           tar -zcvf "$RPM_BUILD_ROOT/SOURCES/pilibro-${{ env.version }}.tar.gz" -C "$PWD" "pilibro-${{ env.version }}"
           cat > "$RPM_BUILD_ROOT/SPECS/pilibro.spec" <<SPEC_EOF
+          %global debug_package %{nil}
           Name:           pilibro
           Version:        ${{ env.version }}
           Release:        1%{?dist}
