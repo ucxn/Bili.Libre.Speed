@@ -17,7 +17,7 @@ ucxn/ZTE-Stat_Max LICENSE.markdown ZTE/LICENSE.markdown
 ucxn/ZTE-Stat_Max LICENSE/SUL-1.0.md ZTE/LICENSE/SUL-1.0.md
 ucxn/ZTE-Stat_Max LICENSE/suppfile.txt ZTE/LICENSE/名字信息.txt
 ucxn/ZTE-Stat_Max LICENSE/license.txt ZTE/LICENSE/哥哥科技通用许可证.txt
-ucxn/ZTE-Stat_Max LICENSE/BR-BY-NC-1.0.md ZTE/LICENSE/显著署名半商业许可证.md
+ucxn/ZTE-Stat_Max LICENSE/BR-PBY-1.0.md ZTE/LICENSE/显著署名半商业许可证.md
 ucxn/ZTE-Stat_Max LICENSE/CopyRight.md ZTE/LICENSE/版权说明.md
 ucxn/Mi-Stat_Max .github/SECURITY.md Mi/SECURITY.md
 ucxn/Mi-Stat_Max .github/%E5%93%A5%E5%93%A5%E8%BD%AF%E4%BB%B6.svg Mi/哥哥软件.svg
