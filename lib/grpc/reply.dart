@@ -152,6 +152,7 @@ abstract final class ReplyGrpc {
             rpid: rpid,
             mode: mode,
             offset: offset,
+            cursorNext: cursorNext,
           );
         }
       }
