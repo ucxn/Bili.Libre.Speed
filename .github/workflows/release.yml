@@ -28,11 +28,6 @@ on:
         required: false
         default: true
         type: boolean
-      build_win_x86:
-        description: "Build Windows x86（失败不影响发布）"
-        required: false
-        default: false
-        type: boolean
       tag:
         description: "Release tag；留空则只构建，不发布"
         required: false
@@ -569,23 +564,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # 旁路：发布会等它跑完以便带上安装包，但成败不参与发布判断
-  win_x86:
-    name: Windows x86
-    needs: validate
-    if: ${{ inputs.build_win_x86 }}
-    uses: 1-Reality/BiliVideo-Lab/.github/workflows/win_x86_app.yml@dev
-    permissions:
-      contents: read
-    with:
-      tag: ${{ inputs.tag }}
-      build_number: ${{ inputs.build_number }}
-      archive: 7z
-      artifact: release-windows-x86
-
   release:
     name: 发布 Release
-    needs: [validate, android, ios, mac, linux_x64, win_x64, win_x86]
+    needs: [validate, android, ios, mac, linux_x64, win_x64]
     if: >-
       ${{
         always() &&
