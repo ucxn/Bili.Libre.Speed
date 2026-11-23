@@ -254,6 +254,7 @@ NormalModel _sourceModel(RcmdSource source) => NormalModel(
     RcmdSource.web => Icons.language,
     RcmdSource.phone => Icons.smartphone_outlined,
     RcmdSource.hd => Icons.tablet_android_outlined,
+    RcmdSource.desktop => Icons.desktop_windows_outlined,
   }),
   getSubtitle: () {
     final account = Accounts.get(AccountType.recommend);
@@ -271,7 +272,7 @@ NormalModel _sourceModel(RcmdSource source) => NormalModel(
   onTap: (context, setState) async {
     final sources = Pref.rcmdSources;
     // 至少留一端
-    if (sources & 7 == source.bit) return;
+    if (sources & 15 == source.bit) return;
     if (source.app case final app? when sources & source.bit == 0) {
       if (VideoHttp.rcmdIdentity(app) == null) {
         if (Accounts.get(AccountType.recommend)

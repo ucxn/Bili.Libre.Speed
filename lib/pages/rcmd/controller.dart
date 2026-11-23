@@ -15,9 +15,10 @@ import 'package:get/get.dart';
 
 /// 混合推荐里的一端：缓冲区不足一批时才再请求
 class _Feed {
-  _Feed(RcmdSource source, this.weight)
+  _Feed(this.source, this.weight)
     : cursor = source.app == null ? null : RcmdAppCursor(source.app!);
 
+  final RcmdSource source;
   final int weight;
 
   /// App 端的翻页游标，Web 端为空
@@ -72,7 +73,12 @@ class RcmdController extends CommonListController {
     int n,
   ) async {
     final cursor = feed.cursor;
-    if (cursor == null) return VideoHttp.rcmdVideoList(freshIdx: n);
+    if (cursor == null) {
+      return VideoHttp.rcmdVideoList(
+        freshIdx: n,
+        desktop: feed.source == .desktop,
+      );
+    }
     final res = await VideoHttp.rcmdVideoListApp(
       cursor,
       refresh: n == 0,

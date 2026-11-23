@@ -229,6 +229,7 @@ class PlPlayerController
       (PlatformUtils.isDesktop && isDesktopPip);
   late bool isDesktopPip = false;
   late nativeapi.Rectangle _lastWindowBounds;
+  late bool _wasMaximized;
   static nativeapi.Rectangle? _lastPipBounds;
 
   nativeapi.Rectangle _adjustPipBounds(
@@ -308,6 +309,7 @@ class PlPlayerController
       ..minimumSize = DeviceUtils.desktopMinSize
       ..bounds = _lastWindowBounds
       ..aspectRatio = 0;
+    if (_wasMaximized) window.maximize();
     setAlwaysOnTop(false, window: window);
   }
 
@@ -322,6 +324,7 @@ class PlPlayerController
       'pip',
       videoPlayerController?.state.position ?? Duration.zero,
     );
+    _wasMaximized = window.isMaximized;
     window.unmaximize();
     _lastWindowBounds = window.bounds;
 
