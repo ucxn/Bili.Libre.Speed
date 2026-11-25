@@ -1687,32 +1687,45 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     final tabBarRow = Row(
       children: [
         Expanded(
-          child: Row(
-            children: [
-              if (tabs.isNotEmpty)
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 96.0 * tabs.length),
-                  child: tabBar(),
-                ),
-              Expanded(
-                child: Center(
-                  child: SizedBox.square(
-                    dimension: 38,
-                    child: IconButton(
-                      tooltip: '全屏',
-                      onPressed: () => videoDetailController
-                          .plPlayerController
-                          .triggerFullScreen(status: true),
-                      icon: Icon(
-                        Icons.fullscreen,
-                        size: 22,
-                        color: colorScheme.onSurfaceVariant,
+          // 侧栏最窄只有 280dp，标签宽度要按实际剩余空间取，
+          // 写死 96 × 标签数 会在窄屏上溢出、盖住右边的按钮；
+          // 标签优先，放不下全屏图标就不显示它
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final tabsWidth = min(
+                96.0 * tabs.length,
+                box.maxWidth,
+              );
+              final showFullscreen = box.maxWidth - tabsWidth >= 38;
+              return Row(
+                children: [
+                  if (tabs.isNotEmpty)
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: tabsWidth),
+                      child: tabBar(),
+                    ),
+                  if (showFullscreen)
+                    Expanded(
+                      child: Center(
+                        child: SizedBox.square(
+                          dimension: 38,
+                          child: IconButton(
+                            tooltip: '全屏',
+                            onPressed: () => videoDetailController
+                                .plPlayerController
+                                .triggerFullScreen(status: true),
+                            icon: Icon(
+                              Icons.fullscreen,
+                              size: 22,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
         SizedBox(
@@ -1720,6 +1733,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           child: TextButton(
             style: const ButtonStyle(
               padding: WidgetStatePropertyAll(.zero),
+              // 默认最小宽 64dp，白占了十几 dp
+              minimumSize: WidgetStatePropertyAll(Size(48, 32)),
             ),
             onPressed: videoDetailController.showShootDanmakuSheet,
             child: Text(
