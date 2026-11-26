@@ -61,11 +61,6 @@ jobs:
         shell: bash
         env:
           TAG: ${{ inputs.tag }}
-          BUILD_ANDROID: ${{ inputs.build_android }}
-          BUILD_IOS: ${{ inputs.build_ios }}
-          BUILD_MAC: ${{ inputs.build_mac }}
-          BUILD_LINUX: ${{ inputs.build_linux_x64 }}
-          BUILD_WINDOWS: ${{ inputs.build_win_x64 }}
           BUILD_NUMBER: ${{ inputs.build_number }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -75,11 +70,6 @@ jobs:
           fi
 
           if [[ -n "${TAG}" ]]; then
-            if [[ "${BUILD_ANDROID}" != "true" || "${BUILD_WINDOWS}" != "true" ]]; then
-              echo "正式 Release 至少必须包含 Android 和 Windows。"
-              exit 1
-            fi
-
             if gh release view "${TAG}" >/dev/null 2>&1; then
               echo "Release ${TAG} 已存在。"
               exit 1
