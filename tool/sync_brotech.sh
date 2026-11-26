@@ -22,7 +22,7 @@ ucxn/ZTE-Stat_Max LICENSE/BR-PBY-1.0.md ZTE/LICENSE/显著署名半商业许可�
 ucxn/ZTE-Stat_Max LICENSE/CopyRight.md ZTE/LICENSE/版权说明.md
 ucxn/ZTE-Stat_Max REDISTRIBUTION.md ZTE/再分发.md
 ucxn/ZTE-Stat_Max 发展史故事.md ZTE/发展史.md
-ucxn/Bro-Stat .github/CONTRIBUTING.md 贡献指南.md
+ucxn/Bro-Stat .github/Contributing.md 贡献指南.md
 ucxn/Mi-Stat_Max .github/SECURITY.md Mi/SECURITY.md
 ucxn/Mi-Stat_Max .github/%E5%93%A5%E5%93%A5%E8%BD%AF%E4%BB%B6.svg Mi/哥哥软件.svg
 ucxn/Mi-Stat_Max README.md Mi/README.md
