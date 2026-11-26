@@ -17,6 +17,10 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:markdown/markdown.dart' as md;
 import 'package:material_ui/material_ui.dart';
+import 'package:re_highlight/languages/all.dart';
+import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/github-dark.dart';
+import 'package:re_highlight/styles/github.dart';
 import 'package:share_plus/share_plus.dart';
 
 const _root = 'assets/BroTech/';
@@ -133,6 +137,74 @@ final Future<String> _marked = rootBundle.loadString(
   'assets/web/marked.umd.js',
 );
 
+final Highlight _highlight = Highlight()
+  ..registerLanguages(builtinAllLanguages);
+
+// 不按扩展名判断，直接根据正文内容在这些常见语言里自动匹配高亮；
+// 限定常用子集可避免在手机端对大文件跑全量 190 种语言词法分析而卡顿。
+const _highlightLangs = [
+  'javascript',
+  'go',
+  'bash',
+  'yaml',
+  'json',
+  'xml',
+  'css',
+  'dart',
+  'python',
+];
+
+String _cssHex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+class _HtmlHighlightRenderer implements HighlightRenderer {
+  _HtmlHighlightRenderer(this._theme);
+
+  final Map<String, TextStyle> _theme;
+  final StringBuffer _buf = StringBuffer();
+  final List<bool> _opened = [];
+
+  String get html => _buf.toString();
+
+  static String _esc(String s) => s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+  @override
+  void addText(String text) => _buf.write(_esc(text));
+
+  @override
+  void openNode(DataNode node) {
+    final scope = node.scope;
+    final style = scope == null
+        ? null
+        : (_theme[scope] ?? _theme[scope.split('.').first]);
+    if (style == null ||
+        (style.color == null &&
+            style.fontWeight != FontWeight.bold &&
+            style.fontStyle != FontStyle.italic)) {
+      _opened.add(false);
+      return;
+    }
+    _buf.write('<span style="');
+    if (style.color != null) _buf.write('color:${_cssHex(style.color!)};');
+    if (style.fontWeight == FontWeight.bold) _buf.write('font-weight:bold;');
+    if (style.fontStyle == FontStyle.italic) _buf.write('font-style:italic;');
+    _buf.write('">');
+    _opened.add(true);
+  }
+
+  @override
+  void closeNode(DataNode node) {
+    if (_opened.isNotEmpty && _opened.removeLast()) {
+      _buf.write('</span>');
+    }
+  }
+}
+
 /// Pinching (or Ctrl + wheel, or a trackpad pinch) sets the body font size
 /// instead of magnifying the page, so the text reflows to the width; the line
 /// between the fingers stays put.
@@ -192,6 +264,9 @@ class _BroTechDocPageState extends State<BroTechDocPage> {
 
   late final Future<String> _text = rootBundle.loadString(widget.asset);
   late final Future<List<String>> _page = Future.wait([_text, _marked]);
+  late final Future<HighlightResult> _highlighted = _text.then(
+    (text) => _highlight.highlightAuto(text, _highlightLangs),
+  );
   late final Future<dom.Document> _doc = _text.then((text) {
     final doc = html_parser.parse(
       md.markdownToHtml(text, extensionSet: md.ExtensionSet.gitHubWeb),
@@ -292,40 +367,60 @@ class _BroTechDocPageState extends State<BroTechDocPage> {
                 ),
               )
             : _web
-            ? _when(_page, (v) => _webView(v[0], v[1]))
+            ? (_isMd
+                  ? _when(_page, (v) => _webView(text: v[0], marked: v[1]))
+                  : _when(_highlighted, (r) => _webView(highlighted: r)))
             : _isMd
             ? _when(_doc, _html)
-            : _when(
-                _text,
-                (text) => SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: SelectableText(
-                    text,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ),
+            : _when(_highlighted, _plainText),
       ),
     );
   }
 
-  Widget _webView(String text, String marked) {
+  Widget _plainText(HighlightResult result) {
+    final isDark = ColorScheme.of(context).brightness == Brightness.dark;
+    const baseStyle = TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 15,
+      height: 1.5,
+    );
+    final renderer = TextSpanRenderer(
+      baseStyle,
+      isDark ? githubDarkTheme : githubTheme,
+    );
+    result.render(renderer);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: SelectableText.rich(
+        renderer.span ?? const TextSpan(style: baseStyle),
+      ),
+    );
+  }
+
+  Widget _webView({
+    String? text,
+    String? marked,
+    HighlightResult? highlighted,
+  }) {
     final c = ColorScheme.of(context);
     final size = MediaQuery.textScalerOf(context).scale(_isMd ? 17 : 15);
     final line = _css(c.outlineVariant);
     final code = _css(c.surfaceContainerHighest);
-    // '<' escaped so no tag inside the text can end the script.
-    final json = jsonEncode(text).replaceAll('<', r'\u003c');
-    final content = _isMd
-        ? '<script>$marked</script>'
-              '<script>document.write(marked.parse($json))</script>'
-              '$_alertScript'
-        : '<pre class="t"></pre>'
-              '<script>document.body.firstChild.textContent=$json</script>';
+    final String content;
+    if (_isMd) {
+      // '<' escaped so no tag inside the text can end the script.
+      final json = jsonEncode(text!).replaceAll('<', r'\u003c');
+      content =
+          '<script>$marked</script>'
+          '<script>document.write(marked.parse($json))</script>'
+          '$_alertScript';
+    } else {
+      final renderer = _HtmlHighlightRenderer(
+        c.brightness == Brightness.dark ? githubDarkTheme : githubTheme,
+      );
+      highlighted!.render(renderer);
+      content = '<pre class="t">${renderer.html}</pre>';
+    }
     return InAppWebView(
       webViewEnvironment: webViewEnvironment,
       initialSettings: InAppWebViewSettings(

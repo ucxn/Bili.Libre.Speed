@@ -4,13 +4,27 @@
 set -euo pipefail
 cd "$(dirname "$0")/../assets/BroTech"
 
+# 将上游路径中的中文等非 ASCII 字节自动转为 %XX（已转义的 % 保留不动），
+# 避免 Windows Git Bash 调用原生 curl.exe 时因 ANSI 代码页把中文转成 ? 导致 404
+urlencode_utf8() {
+  local LC_ALL=C s="$1" out="" i c
+  for ((i = 0; i < ${#s}; i++)); do
+    c="${s:i:1}"
+    case "$c" in
+      [a-zA-Z0-9._~/%-]) out+="$c" ;;
+      *) printf -v c '%%%02X' "'$c"; out+="$c" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
 while read -r repo src dest; do
   # Windows 的 Git Bash 把参数交给原生 curl 时按系统 ANSI 代码页转码，中文变成 ?，
   # curl 再把 ? 换成 _；改由 bash 自己重定向写文件，文件名不经过转码
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/HEAD/$src" >"$dest"
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/HEAD/$(urlencode_utf8 "$src")" >"$dest"
 done <<'EOF'
 ucxn/ZTE-Stat_Max .github/SECURITY.md ZTE/SECURITY.md
-ucxn/ZTE-Stat_Max new.user.js ZTE/保留所有权利.js
+ucxn/ZTE-Stat_Max new.user.js ZTE/保留所有权利
 ucxn/ZTE-Stat_Max assets/nc_custom_noversion.svg ZTE/noversion.svg
 ucxn/ZTE-Stat_Max README.md ZTE/README.md
 ucxn/ZTE-Stat_Max README_EN.md ZTE/README_EN.md
