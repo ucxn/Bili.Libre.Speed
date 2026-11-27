@@ -25,13 +25,13 @@ while read -r repo src dest; do
 done <<'EOF'
 ucxn/ZTE-Stat_Max .github/SECURITY.md ZTE/SECURITY.md
 ucxn/ZTE-Stat_Max new.user.js ZTE/保留所有权利
-ucxn/ZTE-Stat_Max assets/nc_custom_noversion.svg ZTE/noversion.svg
+ucxn/ZTE-Stat_Max assets/icon.svg ZTE/logo.svg
 ucxn/ZTE-Stat_Max README.md ZTE/README.md
 ucxn/ZTE-Stat_Max README_EN.md ZTE/README_EN.md
 ucxn/ZTE-Stat_Max LICENSE.markdown ZTE/LICENSE.markdown
 ucxn/ZTE-Stat_Max LICENSE/SUL-1.0.md ZTE/LICENSE/SUL-1.0.md
 ucxn/ZTE-Stat_Max LICENSE/suppfile.txt ZTE/LICENSE/名字信息.txt
-ucxn/ZTE-Stat_Max LICENSE/APL-Bro-0.1.txt ZTE/LICENSE/哥哥科技通用许可证.txt
+ucxn/ZTE-Stat_Max LICENSE/APL-Bro-0.1.txt ZTE/LICENSE/哥哥科技互惠专用许可证.txt
 ucxn/ZTE-Stat_Max LICENSE/BR-PBY-1.0.md ZTE/LICENSE/显著署名半商业许可证.md
 ucxn/ZTE-Stat_Max LICENSE/CopyRight.md ZTE/LICENSE/版权说明.md
 ucxn/ZTE-Stat_Max REDISTRIBUTION.md ZTE/再分发.md
