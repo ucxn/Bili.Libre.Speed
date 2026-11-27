@@ -4,24 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/../assets/BroTech"
 
-# 将上游路径中的中文等非 ASCII 字节自动转为 %XX（已转义的 % 保留不动），
-# 避免 Windows Git Bash 调用原生 curl.exe 时因 ANSI 代码页把中文转成 ? 导致 404
-urlencode_utf8() {
-  local LC_ALL=C s="$1" out="" i c
-  for ((i = 0; i < ${#s}; i++)); do
-    c="${s:i:1}"
-    case "$c" in
-      [a-zA-Z0-9._~/%-]) out+="$c" ;;
-      *) printf -v c '%%%02X' "'$c"; out+="$c" ;;
-    esac
-  done
-  printf '%s' "$out"
-}
-
 while read -r repo src dest; do
   # Windows 的 Git Bash 把参数交给原生 curl 时按系统 ANSI 代码页转码，中文变成 ?，
   # curl 再把 ? 换成 _；改由 bash 自己重定向写文件，文件名不经过转码
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/HEAD/$(urlencode_utf8 "$src")" >"$dest"
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/$repo/HEAD/$src" >"$dest"
 done <<'EOF'
 ucxn/ZTE-Stat_Max .github/SECURITY.md ZTE/SECURITY.md
 ucxn/ZTE-Stat_Max new.user.js ZTE/保留所有权利
@@ -35,7 +21,7 @@ ucxn/ZTE-Stat_Max LICENSE/APL-Bro-0.1.txt ZTE/LICENSE/哥哥科技互惠专用�
 ucxn/ZTE-Stat_Max LICENSE/BR-PBY-1.0.md ZTE/LICENSE/显著署名半商业许可证.md
 ucxn/ZTE-Stat_Max LICENSE/CopyRight.md ZTE/LICENSE/版权说明.md
 ucxn/ZTE-Stat_Max REDISTRIBUTION.md ZTE/再分发.md
-ucxn/ZTE-Stat_Max 发展史故事.md ZTE/发展史.md
+ucxn/ZTE-Stat_Max %E5%8F%91%E5%B1%95%E5%8F%B2%E6%95%85%E4%BA%8B.md ZTE/发展史.md
 ucxn/Bro-Stat .github/Contributing.md 贡献指南.md
 ucxn/Mi-Stat_Max .github/SECURITY.md Mi/SECURITY.md
 ucxn/Mi-Stat_Max .github/%E5%93%A5%E5%93%A5%E8%BD%AF%E4%BB%B6.svg Mi/哥哥软件.svg
