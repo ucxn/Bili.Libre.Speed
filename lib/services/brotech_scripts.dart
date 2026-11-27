@@ -76,9 +76,23 @@ abstract final class BroTechScripts {
     }
     // A captive portal answers 200 with its login page; never let that
     // overwrite a working copy.
-    if (!latin1
-        .decode(bytes.sublist(0, bytes.length < 4096 ? bytes.length : 4096))
-        .contains('==UserScript==')) {
+    const marker = [
+      61, 61, 85, 115, 101, 114, 83, 99, 114, 105, 112, 116, 61, 61,
+    ];
+    var found = false;
+    for (var i = 0; i <= bytes.length - 14; i++) {
+      if (bytes[i] == 61 && bytes[i + 1] == 61) {
+        var j = 2;
+        while (j < 14 && bytes[i + j] == marker[j]) {
+          j++;
+        }
+        if (j == 14) {
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found) {
       lastError[index] = '下载内容不是脚本（${bytes.length} B）';
       return null;
     }
