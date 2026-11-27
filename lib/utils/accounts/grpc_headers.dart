@@ -26,6 +26,8 @@ abstract final class GrpcHeaders {
   /// 拿粉版 token 自报 HD 时服务器当成未登录，IP 属地之类只给登录用户的字段就没了
   static Map<String, String> replyHeaders(String? accessKey) => {
     if (accessKey != null) 'authorization': 'identify_v1 $accessKey',
+    'app-key': BiliApp.hd.keyName,
+    'x-bili-fawkes-req-bin': fawkes(BiliApp.hd),
     'x-bili-device-bin': BiliDevice.deviceBin(
       BiliApp.hd,
       build: _replyBuild,
