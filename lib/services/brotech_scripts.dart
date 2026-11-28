@@ -299,7 +299,7 @@ const GM_getValue=(k,d)=>Object.prototype.hasOwnProperty.call(__v,k)?JSON.parse(
 const GM_setValue=(k,v)=>{const j=JSON.stringify(v);if(j===undefined)return GM_deleteValue(k);__v[k]=j;__p(k,j);};
 const GM_deleteValue=k=>{delete __v[k];__p(k,null);};
 const GM_listValues=()=>Object.keys(__v);
-const __run=()=>{__c('broLog','已注入（${runAt.key}）'+location.href);try{
+const __run=()=>{__c('broLog','已注入（${runAt.key}）'+location.href);(document.head||document.documentElement).appendChild(Object.assign(document.createElement('style'),{textContent:'a[href="https://github.com/ucxn/Bro-Stat/blob/main/.github/Install.md#安卓客户端"]{display:none!important}'}));try{
 $patched
 }catch(e){__c('broLog','错误 '+(e&&e.stack||e));}};
 $schedule
